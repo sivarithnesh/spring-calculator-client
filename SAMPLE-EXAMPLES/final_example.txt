@@ -1,0 +1,355 @@
+SELECT 
+    Q.Dept,
+    Q.BreakType,
+    Q.ParentBreakDate,
+    Q.StatementDate,
+    Q.ParentAge,
+    Q.DiscvAge,
+    Q.BBHNum,
+    Q.ISIN,
+    Q."Asset Description",
+    Q.BbhAcctNum,
+    Q.BbhAcctName,
+    Q."Fund Amount",
+    Q."BBH Amount",
+    Q.MasterBreak,
+    Q.ChildBreak,
+    Q.Exposure,
+    Q."Break Description",
+    Q.ParentComments,
+    Q.SourceDB,
+    Q.Freq,
+    Q.BBHExtAcctNum,
+    Q.FundExtAcctNum,
+    Q."TA Name",
+
+    MF.STATEMENT_EXPECTED,
+    MF.CONTACT_NO,
+    MF.INITIAL_METHOD,
+    MF.TA_EMAIL_ID
+
+FROM
+(
+    /* qry_Escal_Details_HedgeSetup INLINE */
+    SELECT 
+        BD.Dept,
+        BD.BreakType,
+        MPB.Statement AS ParentBreakDate,
+        MPB.Freq AS StatementDate,
+        TRUNC(SYSDATE) - TRUNC(MPB.Statement) AS ParentAge,
+        TRUNC(SYSDATE) - TRUNC(BD.BreakOpened) AS DiscvAge,
+        MPB.SecID AS BBHNum,
+        MPB.STOCK_CODE AS ISIN,
+        MPB.SecName AS "Asset Description",
+        MPB.BbhAcctNum,
+        MPB.BbhAcctName,
+
+        TO_CHAR(MPB.BbhAmount, 'FM9999999990.000000') AS "BBH Amount",
+        TO_CHAR(MPB.NsccAmount, 'FM9999999990.000000') AS "Fund Amount",
+        TO_CHAR(ABS(MPB.BbhAmount - MPB.NsccAmount),'FM9999999990.000000') AS MasterBreak,
+
+        BD.BreakQuantity AS ChildBreak,
+        TO_CHAR(BD.BreakQuantity * BD.Price,'FM9999999990.00') AS Exposure,
+        BD.BreakDesc AS "Break Description",
+
+        MPB.Comments AS ParentComments,
+        BD.SourceDB,
+        MPB.Freq,
+        MPB.BBHExtAcctNum,
+        MPB.NsccExtAcctNum AS FundExtAcctNum,
+
+        TA."TA Name",
+
+        MPB.BbhAcctNum || '-' || MPB.SecID AS SUB_ACC_NO
+
+    FROM
+    (
+        /* tbl_MasterPositionBreaks INLINE */
+        SELECT 
+            B.LOCAL_ACC_NO,
+            B.AGENT_CODE,
+            I.STRING_27 AS SecID,
+            I.STMT_DATE AS Statement,
+            S.STOCK_CODE,
+            I.STRING_29 AS SecName,
+            I.STRING_21 AS BBHExtAcctNum,
+            I.STRING_21 AS NsccExtAcctNum,
+            I.STRING_13,
+            I.SYS_ENTRY_DATE,
+
+            CASE WHEN I.LS_TYPE = 9030 THEN I.AMOUNT_6 ELSE 0 END AS BbhAmount,
+            CASE WHEN I.LS_TYPE = 9030 THEN 0 ELSE I.AMOUNT_6 END AS NsccAmount,
+
+            CASE 
+                WHEN I.STRING_14 IS NOT NULL AND TRIM(I.STRING_14) <> '' 
+                THEN I.STRING_14
+                WHEN SUBSTR(B.LOCAL_ACC_NO,8,1)='-' 
+                THEN SUBSTR(B.LOCAL_ACC_NO,1,7)
+                ELSE 'OMNIBUS'
+            END AS BbhAcctNum,
+
+            I.FLAG_2,
+            I.STMT_DATE
+
+        FROM TLMADM_BANK B
+        JOIN TLMADM_ITEM I
+            ON B.CORR_ACC_NO = I.CORR_ACC_NO
+        LEFT JOIN TLMADM_STCK S
+            ON I.STOCK_ID = S.STOCK_ID
+        WHERE 
+            B.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+            AND I.LS_TYPE IN (9030,9099)
+            AND I.FLAG_2 = 0
+    ) MPB
+
+    JOIN
+    (
+        /* tbl_BreakDetails_MonthlyAndHedge INLINE */
+        SELECT 
+            B.LOCAL_ACC_NO,
+            I.STMT_DATE,
+            I.SYS_ENTRY_DATE AS BreakOpened,
+            I.ITEM_ID,
+            I.STRING_6,
+            I.STRING_21,
+            I.REFERENCE,
+            I.AMOUNT_6,
+            I.LS_TYPE,
+            S.STOCK_CODE AS ISIN,
+            1 AS BreakQuantity,
+            I.AMOUNT_6 AS Price,
+            'Hedge' AS SourceDB,
+            'NA' AS BreakType,
+            'NA' AS Dept,
+            'NA' AS BreakDesc
+
+        FROM TLMADM_BANK B
+        JOIN TLMADM_ITEM I
+            ON B.CORR_ACC_NO = I.CORR_ACC_NO
+        LEFT JOIN TLMADM_STCK S
+            ON I.STOCK_ID = S.STOCK_ID
+        WHERE 
+            B.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+            AND I.LS_TYPE NOT IN (9030,9099)
+            AND I.FLAG_2 = 0
+    ) BD
+
+    ON MPB.LOCAL_ACC_NO = BD.LOCAL_ACC_NO
+    AND MPB.STOCK_CODE = BD.ISIN
+    AND MPB.Statement = BD.STMT_DATE
+
+    LEFT JOIN
+    (
+        /* qry_TA_Names INLINE */
+        SELECT 
+            I.STRING_27 AS BBHNum,
+            MAX(I.STRING_5) KEEP (DENSE_RANK FIRST ORDER BY I.SYS_ENTRY_DATE DESC) AS "TA Name"
+        FROM TLMADM_BANK B
+        JOIN TLMADM_ITEM I
+            ON B.CORR_ACC_NO = I.CORR_ACC_NO
+        WHERE 
+            B.AGENT_CODE LIKE 'MUTUAL FUNDS%'
+            AND I.LS_TYPE = 9030
+            AND I.FLAG_2 = 0
+        GROUP BY I.STRING_27
+    ) TA
+    ON TA.BBHNum = MPB.SecID
+
+    WHERE 
+        (TRUNC(SYSDATE) - TRUNC(BD.BreakOpened)) >= 30
+        AND BD.SourceDB = 'Hedge'
+
+) Q
+
+LEFT JOIN
+(
+    /* qry_NewMsgFeedData INLINE */
+    SELECT 
+        MF.SUB_ACC_NO,
+        MF.DESCRIPTION AS STATEMENT_EXPECTED,
+        MF.BSLA AS CONTACT_NO,
+        MF.BUS_CODE AS INITIAL_METHOD,
+        MF.BUS_OWNER AS TA_EMAIL_ID
+    FROM TLMADM_BANK B
+    JOIN TLMADM_MESSAGE_FEED MF
+        ON B.CORR_ACC_NO = MF.CORR_ACC_NO
+    WHERE 
+        MF.DESCRIPTION IS NOT NULL
+        AND MF.STATUS = 0
+        AND B.AGENT_CODE LIKE 'MUTUAL FUNDS%'
+) MF
+
+ON Q.SUB_ACC_NO = MF.SUB_ACC_NO
+
+ORDER BY 
+    Q.Dept,
+    Q.BreakType;
+	
+	
+--optimsed fina; query
+
+SELECT 
+    Q.Dept,
+    Q.BreakType,
+    Q.ParentBreakDate,
+    Q.StatementDate,
+    Q.ParentAge,
+    Q.DiscvAge,
+    Q.BBHNum,
+    Q.ISIN,
+    Q."Asset Description",
+    Q.BbhAcctNum,
+    Q.BbhAcctName,
+    Q."Fund Amount",
+    Q."BBH Amount",
+    Q.MasterBreak,
+    Q.ChildBreak,
+    Q.Exposure,
+    Q."Break Description",
+    Q.ParentComments,
+    Q.SourceDB,
+    Q.Freq,
+    Q.BBHExtAcctNum,
+    Q.FundExtAcctNum,
+    Q."TA Name",
+    MF.STATEMENT_EXPECTED,
+    MF.CONTACT_NO,
+    MF.INITIAL_METHOD,
+    MF.TA_EMAIL_ID
+FROM
+(
+    SELECT 
+        /* Pre-filtered and minimized dataset */
+        MPB.LOCAL_ACC_NO,
+        MPB.SecID AS BBHNum,
+        MPB.STOCK_CODE AS ISIN,
+        MPB.SecName AS "Asset Description",
+        MPB.BbhAcctNum,
+        MPB.BbhAcctName,
+
+        MPB.Statement AS ParentBreakDate,
+        MPB.Freq AS StatementDate,
+
+        (TRUNC(SYSDATE) - TRUNC(MPB.Statement)) AS ParentAge,
+        (TRUNC(SYSDATE) - TRUNC(BD.BreakOpened)) AS DiscvAge,
+
+        TO_CHAR(MPB.BbhAmount, 'FM9999999990.000000') AS "BBH Amount",
+        TO_CHAR(MPB.NsccAmount, 'FM9999999990.000000') AS "Fund Amount",
+        TO_CHAR(ABS(MPB.BbhAmount - MPB.NsccAmount),'FM9999999990.000000') AS MasterBreak,
+
+        BD.BreakQuantity AS ChildBreak,
+        (BD.BreakQuantity * BD.Price) AS Exposure,
+        BD.BreakDesc AS "Break Description",
+
+        MPB.Comments AS ParentComments,
+        BD.SourceDB,
+        MPB.Freq,
+        MPB.BBHExtAcctNum,
+        MPB.NsccExtAcctNum AS FundExtAcctNum,
+
+        TA.TA_NAME AS "TA Name",
+
+        MPB.BbhAcctNum || '-' || MPB.SecID AS SUB_ACC_NO,
+        BD.Dept,
+        BD.BreakType
+
+    FROM
+    (
+        /* MASTER_BREAKS - FILTER EARLY */
+        SELECT 
+            B.CORR_ACC_NO,
+            B.LOCAL_ACC_NO,
+            I.STRING_27 AS SecID,
+            I.STMT_DATE AS Statement,
+            S.STOCK_CODE,
+            I.STRING_29 AS SecName,
+            I.STRING_21 AS BBHExtAcctNum,
+            I.STRING_21 AS NsccExtAcctNum,
+            I.STRING_13,
+            I.SYS_ENTRY_DATE,
+            I.FLAG_2,
+
+            CASE WHEN I.LS_TYPE = 9030 THEN I.AMOUNT_6 ELSE 0 END AS BbhAmount,
+            CASE WHEN I.LS_TYPE = 9030 THEN 0 ELSE I.AMOUNT_6 END AS NsccAmount,
+
+            CASE 
+                WHEN I.STRING_14 IS NOT NULL THEN I.STRING_14
+                WHEN SUBSTR(B.LOCAL_ACC_NO,8,1)='-' THEN SUBSTR(B.LOCAL_ACC_NO,1,7)
+                ELSE 'OMNIBUS'
+            END AS BbhAcctNum
+
+        FROM TLMADM_ITEM I
+        JOIN TLMADM_BANK B
+            ON B.CORR_ACC_NO = I.CORR_ACC_NO
+        LEFT JOIN TLMADM_STCK S
+            ON I.STOCK_ID = S.STOCK_ID
+        WHERE 
+            I.FLAG_2 = 0
+            AND I.LS_TYPE IN (9030,9099)
+            AND B.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+    ) MPB
+
+    JOIN
+    (
+        /* BREAK DETAILS - FILTER EARLY */
+        SELECT 
+            I.CORR_ACC_NO,
+            I.STMT_DATE,
+            I.SYS_ENTRY_DATE AS BreakOpened,
+            I.AMOUNT_6 AS Price,
+            S.STOCK_CODE AS ISIN,
+            1 AS BreakQuantity,
+            'Hedge' AS SourceDB,
+            'NA' AS Dept,
+            'NA' AS BreakType,
+            'NA' AS BreakDesc
+
+        FROM TLMADM_ITEM I
+        JOIN TLMADM_BANK B
+            ON B.CORR_ACC_NO = I.CORR_ACC_NO
+        LEFT JOIN TLMADM_STCK S
+            ON I.STOCK_ID = S.STOCK_ID
+        WHERE 
+            I.FLAG_2 = 0
+            AND I.LS_TYPE NOT IN (9030,9099)
+            AND B.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+            AND I.SYS_ENTRY_DATE <= TRUNC(SYSDATE) - 30   -- 🔥 pushed filter here
+    ) BD
+
+    ON MPB.CORR_ACC_NO = BD.CORR_ACC_NO
+    AND MPB.STOCK_CODE = BD.ISIN
+    AND MPB.Statement = BD.STMT_DATE
+
+    LEFT JOIN
+    (
+        /* TA_NAMES optimized */
+        SELECT 
+            STRING_27,
+            MAX(STRING_5) KEEP (DENSE_RANK FIRST ORDER BY SYS_ENTRY_DATE DESC) AS TA_NAME
+        FROM TLMADM_ITEM
+        WHERE LS_TYPE = 9030 AND FLAG_2 = 0
+        GROUP BY STRING_27
+    ) TA
+    ON TA.STRING_27 = MPB.SecID
+
+) Q
+
+LEFT JOIN
+(
+    /* MSG_FEED optimized */
+    SELECT 
+        MF.SUB_ACC_NO,
+        MF.DESCRIPTION AS STATEMENT_EXPECTED,
+        MF.BSLA AS CONTACT_NO,
+        MF.BUS_CODE AS INITIAL_METHOD,
+        MF.BUS_OWNER AS TA_EMAIL_ID
+    FROM TLMADM_MESSAGE_FEED MF
+    WHERE 
+        MF.STATUS = 0
+        AND MF.DESCRIPTION IS NOT NULL
+) MF
+ON Q.SUB_ACC_NO = MF.SUB_ACC_NO
+
+ORDER BY 
+    Q.Dept,
+    Q.BreakType;	
