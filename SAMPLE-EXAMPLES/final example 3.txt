@@ -1,0 +1,534 @@
+zeropos
+=========
+query 1 :
+=========
+SELECT DISTINCT 
+    TLMADM_ITEM.STRING_27 AS SecID,
+    TLMADM_ITEM.STRING_14 AS BbhAcctNum,
+    TLMADM_ITEM.STMT_DATE AS Statement
+FROM TLMADM_BANK
+INNER JOIN TLMADM_ITEM 
+    ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+WHERE 
+    TLMADM_ITEM.STMT_DATE > (TRUNC(SYSDATE) - EXTRACT(DAY FROM SYSDATE) - 4)
+    AND (
+        TLMADM_BANK.AGENT_CODE = 'MUTUAL FUNDS - MONTHLY POSITIONS'
+        OR TLMADM_BANK.AGENT_CODE LIKE 'MUTUAL FUNDS - HEDGE%'
+    )
+    AND TLMADM_ITEM.LS_TYPE = 9030;
+	
+query 2 :
+=======
+SELECT 
+    TLMADM_BANK.AGENT_CODE,
+    TLMADM_ITEM.STRING_27 AS SecID,
+    TLMADM_ITEM.STRING_28 AS SecName,
+    TLMADM_ITEM.STMT_DATE AS Statement,
+    TLMADM_ITEM.STRING_14 AS BbhAcctNum,
+    TLMADM_ITEM.STRING_29 AS BbhAcctName,
+    TLMADM_ITEM.STRING_21 AS BBHNetAcctNum,
+    TLMADM_ITEM.STRING_20,
+    TLMADM_ITEM.STRING_23 AS Reg,
+    TLMADM_ITEM.STRING_24 AS TYPE,
+    TLMADM_ITEM.STRING_30,
+    TLMADM_ITEM.STRING_16 AS AssetClass,
+    TLMADM_ITEM.STRING_17 AS "Seg/Omni",
+    TLMADM_ITEM.STRING_12 AS ISIN,
+    TLMADM_ITEM.STRING_13 AS Freq,
+    TLMADM_ITEM.STRING_5 AS TA
+FROM TLMADM_BANK
+INNER JOIN TLMADM_ITEM 
+    ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+WHERE 
+    (
+        TLMADM_BANK.AGENT_CODE = 'MUTUAL FUNDS - MONTHLY POSITIONS'
+        OR TLMADM_BANK.AGENT_CODE LIKE 'MUTUAL FUNDS - HEDGE%'
+    )
+    AND TLMADM_ITEM.STMT_DATE BETWEEN 
+        TRUNC(ADD_MONTHS(SYSDATE, -2), 'MM') 
+        AND LAST_DAY(ADD_MONTHS(SYSDATE, -1))
+    AND TLMADM_ITEM.LS_TYPE = 9030;
+	
+	
+	
+Main query 
+==========
+SELECT 
+    Z2.*
+FROM 
+(
+    -- Subquery 2
+    SELECT 
+        TLMADM_BANK.AGENT_CODE,
+        TLMADM_ITEM.STRING_27 AS SecID,
+        TLMADM_ITEM.STRING_28 AS SecName,
+        TLMADM_ITEM.STMT_DATE AS Statement,
+        TLMADM_ITEM.STRING_14 AS BbhAcctNum,
+        TLMADM_ITEM.STRING_29 AS BbhAcctName,
+        TLMADM_ITEM.STRING_21 AS BBHNetAcctNum,
+        TLMADM_ITEM.STRING_20,
+        TLMADM_ITEM.STRING_23 AS Reg,
+        TLMADM_ITEM.STRING_24 AS TYPE,
+        TLMADM_ITEM.STRING_30,
+        TLMADM_ITEM.STRING_16 AS AssetClass,
+        TLMADM_ITEM.STRING_17 AS "Seg/Omni",
+        TLMADM_ITEM.STRING_12 AS ISIN,
+        TLMADM_ITEM.STRING_13 AS Freq,
+        TLMADM_ITEM.STRING_5 AS TA
+    FROM TLMADM_BANK
+    INNER JOIN TLMADM_ITEM 
+        ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+    WHERE 
+        (
+            TLMADM_BANK.AGENT_CODE = 'MUTUAL FUNDS - MONTHLY POSITIONS'
+            OR TLMADM_BANK.AGENT_CODE LIKE 'MUTUAL FUNDS - HEDGE%'
+        )
+        AND TLMADM_ITEM.STMT_DATE BETWEEN 
+            TRUNC(ADD_MONTHS(SYSDATE, -2), 'MM') 
+            AND LAST_DAY(ADD_MONTHS(SYSDATE, -1))
+        AND TLMADM_ITEM.LS_TYPE = 9030
+) Z2
+LEFT JOIN 
+(
+    -- Subquery 1
+    SELECT DISTINCT 
+        TLMADM_ITEM.STRING_27 AS SecID,
+        TLMADM_ITEM.STRING_14 AS BbhAcctNum,
+        TLMADM_ITEM.STMT_DATE AS Statement
+    FROM TLMADM_BANK
+    INNER JOIN TLMADM_ITEM 
+        ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+    WHERE 
+        TLMADM_ITEM.STMT_DATE > (TRUNC(SYSDATE) - EXTRACT(DAY FROM SYSDATE) - 4)
+        AND (
+            TLMADM_BANK.AGENT_CODE = 'MUTUAL FUNDS - MONTHLY POSITIONS'
+            OR TLMADM_BANK.AGENT_CODE LIKE 'MUTUAL FUNDS - HEDGE%'
+        )
+        AND TLMADM_ITEM.LS_TYPE = 9030
+) Z1
+ON (
+    Z2.SecID = Z1.SecID
+    AND Z2.BbhAcctNum = Z1.BbhAcctNum
+)
+WHERE 
+    Z1.SecID IS NULL
+    AND Z2.Freq = 'MONTHLY'
+ORDER BY 
+    Z2.AGENT_CODE,
+    Z2.SecID,
+    Z2.BbhAcctNum;	
+	
+=========================================================================================
+mgmt rptg 
+==========
+	
+qry_MgmtRptg_ChildData
+======================
+SELECT 
+    t.SourceDB,
+    t.ISIN,
+    t.LOCAL_ACC_NO,
+    '' AS BBHExtAcctNum,
+    t.BbhAcctNum,
+    t.Statement,
+    t.BreakCode,
+    t.BreakQuantity,
+    t.BreakDesc AS BreakDesc,
+    t.AuditTrail,
+    t.BreakOpened,
+    t.BreakType,
+    t.BbhSideBreak,
+    t.Dept,
+    t.ReasonType
+FROM tbl_BreakDetails_MonthlyAndHedge t
+WHERE 
+    t.BreakOpened <= (TRUNC(SYSDATE) - EXTRACT(DAY FROM SYSDATE))
+    AND t.Resolved IS NULL;
+
+qry_MgmtRptg_ParentData
+=======================
+SELECT 
+    STOCK_CODE,
+    MIN(SecID) AS SecID,
+    MIN(SecName) AS SecName,
+    MAX(Statement) AS Statement,
+    MAX(Price) AS Price
+FROM tbl_MasterPositionBreaks
+GROUP BY STOCK_CODE;
+
+
+qry_MgmtRptg_ParentData2
+========================
+SELECT 
+    BbhAcctNum,
+    MAX(BbhAcctName) AS BbhAcctName
+FROM tbl_MasterPositionBreaks
+WHERE BbhAcctNum NOT IN ('', ' ', 'Multiple Accounts', 'N/A', 'Omni', 'Omnibus')
+GROUP BY BbhAcctNum;	
+	
+	main query 
+	==========
+SELECT 
+    C.SourceDB,
+    C.ISIN,
+    P.SecID,
+    P.SecName,
+    C.LOCAL_ACC_NO,
+    C.BBHExtAcctNum,
+    C.BbhAcctNum,
+    P2.BbhAcctName,
+    C.Statement,
+    C.BreakQuantity,
+    C.BreakType,
+    C.BreakDesc,
+    C.Dept,
+    C.BreakOpened,
+    (TRUNC(SYSDATE) - C.BreakOpened) AS Age,
+    C.AuditTrail AS BreakAddedBy,
+    P.Price,
+    NVL(C.BreakQuantity * P.Price, 0) AS Exposure,
+    C.ReasonType
+FROM 
+(
+    -- Subquery 1 (ChildData)
+    SELECT 
+        t.SourceDB,
+        t.ISIN,
+        t.LOCAL_ACC_NO,
+        '' AS BBHExtAcctNum,
+        t.BbhAcctNum,
+        t.Statement,
+        t.BreakCode,
+        t.BreakQuantity,
+        t.BreakDesc,
+        t.AuditTrail,
+        t.BreakOpened,
+        t.BreakType,
+        t.BbhSideBreak,
+        t.Dept,
+        t.ReasonType
+    FROM tbl_BreakDetails_MonthlyAndHedge t
+    WHERE 
+        t.BreakOpened <= (TRUNC(SYSDATE) - EXTRACT(DAY FROM SYSDATE))
+        AND t.Resolved IS NULL
+) C
+
+LEFT JOIN 
+(
+    -- Subquery 2 (ParentData)
+    SELECT 
+        STOCK_CODE,
+        MIN(SecID) AS SecID,
+        MIN(SecName) AS SecName,
+        MAX(Statement) AS Statement,
+        MAX(Price) AS Price
+    FROM tbl_MasterPositionBreaks
+    GROUP BY STOCK_CODE
+) P
+ON C.ISIN = P.STOCK_CODE
+
+LEFT JOIN 
+(
+    -- Subquery 3 (ParentData2)
+    SELECT 
+        BbhAcctNum,
+        MAX(BbhAcctName) AS BbhAcctName
+    FROM tbl_MasterPositionBreaks
+    WHERE BbhAcctNum NOT IN ('', ' ', 'Multiple Accounts', 'N/A', 'Omni', 'Omnibus')
+    GROUP BY BbhAcctNum
+) P2
+ON P2.BbhAcctNum = C.BbhAcctNum;
+
+
+final main query
+=================
+SELECT 
+    C.SourceDB,
+    C.ISIN,
+    P.SecID,
+    P.SecName,
+    C.LOCAL_ACC_NO,
+    C.BBHExtAcctNum,
+    C.BbhAcctNum,
+    P2.BbhAcctName,
+    C.Statement,
+    C.BreakQuantity,
+    C.BreakType,
+    C.BreakDesc,
+    C.Dept,
+    C.BreakOpened,
+    (TRUNC(SYSDATE) - C.BreakOpened) AS Age,
+    C.AuditTrail AS BreakAddedBy,
+    P.Price,
+    NVL(C.BreakQuantity * P.Price, 0) AS Exposure,
+    C.ReasonType
+
+FROM 
+(
+    -- 🔹 ChildData (Break Details)
+    SELECT 
+        t.SourceDB,
+        t.ISIN,
+        t.LOCAL_ACC_NO,
+        '' AS BBHExtAcctNum,
+        t.BbhAcctNum,
+        t.Statement,
+        t.BreakCode,
+        t.BreakQuantity,
+        t.BreakDesc,
+        t.AuditTrail,
+        t.BreakOpened,
+        t.BreakType,
+        t.BbhSideBreak,
+        t.Dept,
+        t.ReasonType
+    FROM tbl_BreakDetails_MonthlyAndHedge t
+    WHERE 
+        t.BreakOpened <= (TRUNC(SYSDATE) - EXTRACT(DAY FROM SYSDATE))
+        AND t.Resolved IS NULL
+) C
+
+LEFT JOIN 
+(
+    -- 🔹 ParentData (from MasterPositionBreaks)
+    SELECT 
+        STOCK_CODE,
+        MIN(SecID) AS SecID,
+        MIN(SecName) AS SecName,
+        MAX(Statement) AS Statement,
+        MAX(Price) AS Price
+    FROM tbl_MasterPositionBreaks
+    GROUP BY STOCK_CODE
+) P
+ON C.ISIN = P.STOCK_CODE
+
+LEFT JOIN 
+(
+    -- 🔹 ParentData2 (Account Name Mapping)
+    SELECT 
+        BbhAcctNum,
+        MAX(BbhAcctName) AS BbhAcctName
+    FROM tbl_MasterPositionBreaks
+    WHERE BbhAcctNum NOT IN ('', ' ', 'Multiple Accounts', 'N/A', 'Omni', 'Omnibus')
+    GROUP BY BbhAcctNum
+) P2
+ON P2.BbhAcctNum = C.BbhAcctNum;	
+	
+Final SEB RESEARCHANDACCOUT
+===========================
+
+SELECT DISTINCT 
+    P.ISIN,
+    P.SecID,
+    P.BbhAcctNum,
+    P.SebAcctNum,
+    P.Statement,
+    P.BbhAmount,
+    P.SebAmount,
+    B.BreakOpened,
+    B.AuditTrail AS BreakDesc
+
+FROM 
+(
+    -- 🔹 MASTER POSITION (Converted from your image)
+    SELECT 
+        NVL(s.STOCK_CODE,
+            CASE 
+                WHEN LENGTH(i.STRING_27) = 12 THEN i.STRING_27 
+                ELSE 'N/A' 
+            END
+        ) AS ISIN,
+
+        b.LOCAL_ACC_NO AS SebAcctNum,
+
+        MIN(i.STRING_27) AS SecID,
+        MIN(i.STRING_28) AS SecName,
+
+        MAX(CASE WHEN i.LS_TYPE = 9030 THEN i.AMOUNT_6 ELSE 0 END) AS BbhAmount,
+        MAX(CASE WHEN i.LS_TYPE = 9030 THEN 0 ELSE i.AMOUNT_6 END) AS SebAmount,
+
+        MAX(i.STMT_DATE) AS Statement,
+        MAX(b.LOCAL_ACC_NO) AS BbhAcctNum,
+        MAX(i.AMOUNT_5) AS NAV,
+        MIN(i.CURRENCY) AS Currency
+
+    FROM TLMADM_BANK b
+    INNER JOIN TLMADM_ITEM i
+        ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    LEFT JOIN TLMADM_STCK s
+        ON i.STOCK_ID = s.STOCK_ID
+
+    WHERE 
+        b.AGENT_CODE = 'MUTUAL FUNDS- SEB'
+        AND i.LS_TYPE IN (9030, 9099)
+        AND i.FLAG_2 = 0
+
+    GROUP BY 
+        NVL(s.STOCK_CODE,
+            CASE 
+                WHEN LENGTH(i.STRING_27) = 12 THEN i.STRING_27 
+                ELSE 'N/A' 
+            END
+        ),
+        b.LOCAL_ACC_NO
+) P
+
+LEFT JOIN 
+(
+    -- 🔹 BREAK DETAILS (Converted from your image)
+    SELECT 
+        NVL(s.STOCK_CODE,
+            CASE 
+                WHEN LENGTH(i.STRING_27) = 12 THEN i.STRING_27 
+                ELSE 'N/A' 
+            END
+        ) AS ISIN,
+
+        b.LOCAL_ACC_NO AS SebAcctNum,
+
+        CASE 
+            WHEN i.LS_TYPE IN (9106, 9129) THEN i.AMOUNT_6 * -1
+            ELSE i.AMOUNT_6
+        END AS BreakQuantity,
+
+        TRUNC(i.SYS_ENTRY_DATE) AS BreakOpened,
+        n.NOTE AS AuditTrail,
+        i.REASON_TYPE_ID,
+        i.ITEM_ID,
+        i.STRING_6
+
+    FROM TLMADM_BANK b
+    INNER JOIN TLMADM_ITEM i
+        ON b.CORR_ACC_NO = i.CORR_ACC_NO
+
+    LEFT JOIN TLMADM_STCK s
+        ON i.STOCK_ID = s.STOCK_ID
+
+    LEFT JOIN TLMPX_DBO_TLM_REF_REASON_TYPE rt
+        ON i.REASON_TYPE_ID = rt.REASON_TYPE_ID
+
+    LEFT JOIN TLMPX_DBO_TLM_REF_REASON_CATEGORY rc
+        ON rt.REASON_CATEGORY_ID = rc.REASON_CATEGORY_ID
+
+    LEFT JOIN TLMPX_DBO_TLM_BDR_NOTE n
+        ON i.NOTE_ID = n.ID
+
+    WHERE 
+        b.AGENT_CODE = 'MUTUAL FUNDS- SEB'
+        AND i.LS_TYPE NOT IN (9030, 9099)
+        AND i.FLAG_2 = 0
+) B
+
+ON P.SebAcctNum = B.SebAcctNum
+AND P.ISIN = B.ISIN
+
+WHERE 
+    B.ISIN IS NOT NULL;
+	
+OPTIMISED QUERY 
+===============
+WITH BASE_DATA AS (
+    SELECT 
+        b.LOCAL_ACC_NO,
+        i.STRING_27,
+        i.STRING_28,
+        i.LS_TYPE,
+        i.AMOUNT_6,
+        i.AMOUNT_5,
+        i.STMT_DATE,
+        i.SYS_ENTRY_DATE,
+        i.CURRENCY,
+        i.FLAG_2,
+        i.REASON_TYPE_ID,
+        i.ITEM_ID,
+        i.STRING_6,
+        i.NOTE_ID,
+        s.STOCK_CODE,
+
+        -- 🔥 Compute ISIN once
+        NVL(s.STOCK_CODE,
+            CASE 
+                WHEN LENGTH(i.STRING_27) = 12 THEN i.STRING_27 
+                ELSE 'N/A' 
+            END
+        ) AS ISIN
+
+    FROM TLMADM_BANK b
+    JOIN TLMADM_ITEM i
+        ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    LEFT JOIN TLMADM_STCK s
+        ON i.STOCK_ID = s.STOCK_ID
+
+    WHERE 
+        b.AGENT_CODE = 'MUTUAL FUNDS- SEB'
+        AND i.FLAG_2 = 0
+),
+
+-- 🔹 MASTER (9030, 9099)
+MASTER_DATA AS (
+    SELECT 
+        ISIN,
+        LOCAL_ACC_NO,
+
+        MIN(STRING_27) AS SecID,
+        MIN(STRING_28) AS SecName,
+
+        SUM(CASE WHEN LS_TYPE = 9030 THEN AMOUNT_6 ELSE 0 END) AS BbhAmount,
+        SUM(CASE WHEN LS_TYPE = 9030 THEN 0 ELSE AMOUNT_6 END) AS SebAmount,
+
+        MAX(STMT_DATE) AS Statement,
+        MAX(LOCAL_ACC_NO) AS BbhAcctNum,
+        MAX(AMOUNT_5) AS NAV,
+        MIN(CURRENCY) AS Currency
+
+    FROM BASE_DATA
+    WHERE LS_TYPE IN (9030, 9099)
+    GROUP BY ISIN, LOCAL_ACC_NO
+),
+
+-- 🔹 BREAK DATA (non 9030,9099)
+BREAK_DATA AS (
+    SELECT 
+        ISIN,
+        LOCAL_ACC_NO,
+
+        CASE 
+            WHEN LS_TYPE IN (9106, 9129) THEN AMOUNT_6 * -1
+            ELSE AMOUNT_6
+        END AS BreakQuantity,
+
+        TRUNC(SYS_ENTRY_DATE) AS BreakOpened,
+        NOTE_ID
+    FROM BASE_DATA
+    WHERE LS_TYPE NOT IN (9030, 9099)
+),
+
+-- 🔹 NOTE LOOKUP
+NOTE_DATA AS (
+    SELECT ID, NOTE 
+    FROM TLMPX_DBO_TLM_BDR_NOTE
+)
+
+-- 🔥 FINAL QUERY
+SELECT DISTINCT 
+    M.ISIN,
+    M.SecID,
+    M.BbhAcctNum,
+    M.LOCAL_ACC_NO AS SebAcctNum,
+    M.Statement,
+    M.BbhAmount,
+    M.SebAmount,
+    B.BreakOpened,
+    N.NOTE AS BreakDesc
+
+FROM MASTER_DATA M
+
+LEFT JOIN BREAK_DATA B
+    ON M.ISIN = B.ISIN
+    AND M.LOCAL_ACC_NO = B.LOCAL_ACC_NO
+
+LEFT JOIN NOTE_DATA N
+    ON B.NOTE_ID = N.ID
+
+WHERE B.ISIN IS NOT NULL;
+===================================================================	
