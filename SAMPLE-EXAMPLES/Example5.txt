@@ -1,0 +1,385 @@
+SELECT DISTINCT
+    [qry_MasterBreaks_SEB_Parent Amts].ISIN,
+    [qry_MasterBreaks_SEB_Parent Amts].MinOfSecID AS SecID,
+    [qry_MasterBreaks_SEB_Parent Amts].MaxOfBbhAcctNum AS BbhAcctNum,
+    [qry_MasterBreaks_SEB_Parent Amts].SebAcctNum,
+    [qry_MasterBreaks_SEB_Parent Amts].MaxOfStatement AS Statement,
+    [qry_MasterBreaks_SEB_Parent Amts].MaxOfBbhAmount AS BbhAmount,
+    [qry_MasterBreaks_SEB_Parent Amts].MaxOfSebAmount AS SebAmount,
+    Round(Abs([BreakQuantity]), 6) AS Break,
+    [qry_MasterBreaks_SEB_Parent Amts].FirstOfCURRENCY AS Curr,
+    [qry_MasterBreaks_SEB_Parent Amts].MaxOfNAV AS Price,
+    Round(([Break] * [MaxOfNAV]) / [CrossCurrencyRate], 2) AS BreakValue,
+    tbl_BreakDetails_SEB.BreakOpened,
+    IIf([AuditTrail] = '', [ReasonType], [AuditTrail]) AS BreakDescription
+FROM
+    (
+        tbl_FxRates_SEB
+        RIGHT JOIN [qry_MasterBreaks_SEB_Parent Amts]
+            ON tbl_FxRates_SEB.Currency = [qry_MasterBreaks_SEB_Parent Amts].FirstOfCURRENCY
+    )
+    LEFT JOIN tbl_BreakDetails_SEB
+        ON [qry_MasterBreaks_SEB_Parent Amts].ISIN = tbl_BreakDetails_SEB.ISIN
+        AND [qry_MasterBreaks_SEB_Parent Amts].SebAcctNum = tbl_BreakDetails_SEB.SebAcctNum
+WHERE
+    tbl_BreakDetails_SEB.BreakCode = 100000285
+ORDER BY
+    [qry_MasterBreaks_SEB_Parent Amts].ISIN,
+    [qry_MasterBreaks_SEB_Parent Amts].SebAcctNum;
+	
+=================================================================================================
+
+SELECT DISTINCT
+    qry_MasterBreaks_SEB_Parent_Amts.ISIN,
+    qry_MasterBreaks_SEB_Parent_Amts.MinOfSecID AS SecID,
+    qry_MasterBreaks_SEB_Parent_Amts.MaxOfBbhAcctNum AS BbhAcctNum,
+    qry_MasterBreaks_SEB_Parent_Amts.SebAcctNum,
+    qry_MasterBreaks_SEB_Parent_Amts.MaxOfStatement AS Statement,
+    qry_MasterBreaks_SEB_Parent_Amts.MaxOfBbhAmount AS BbhAmount,
+    qry_MasterBreaks_SEB_Parent_Amts.MaxOfSebAmount AS SebAmount,
+    ROUND(ABS(BreakQuantity), 6) AS Break,
+    qry_MasterBreaks_SEB_Parent_Amts.FirstOfCURRENCY AS Curr,
+    qry_MasterBreaks_SEB_Parent_Amts.MaxOfNAV AS Price,
+    ROUND((Break * MaxOfNAV) / CrossCurrencyRate, 2) AS BreakValue,
+    tbl_BreakDetails_SEB.BreakOpened,
+    CASE
+        WHEN AuditTrail IS NULL OR AuditTrail = '' THEN ReasonType
+        ELSE AuditTrail
+    END AS BreakDescription
+FROM
+    tbl_FxRates_SEB
+    RIGHT JOIN qry_MasterBreaks_SEB_Parent_Amts
+        ON tbl_FxRates_SEB.Currency = qry_MasterBreaks_SEB_Parent_Amts.FirstOfCURRENCY
+    LEFT JOIN tbl_BreakDetails_SEB
+        ON qry_MasterBreaks_SEB_Parent_Amts.ISIN = tbl_BreakDetails_SEB.ISIN
+        AND qry_MasterBreaks_SEB_Parent_Amts.SebAcctNum = tbl_BreakDetails_SEB.SebAcctNum
+WHERE
+    tbl_BreakDetails_SEB.BreakCode = 100000285
+ORDER BY
+    qry_MasterBreaks_SEB_Parent_Amts.ISIN,
+    qry_MasterBreaks_SEB_Parent_Amts.SebAcctNum;
+
+====================================================================================
+
+WITH
+TBL_FXRATES AS
+(
+    SELECT
+        a.Currency,
+        a.Rate,
+        0.000001 AS CrossCurrencyRate,
+        a.FROM_DATE
+    FROM
+        TLMADM_CRAT a
+    WHERE
+        a.FROM_DATE =
+        (
+            SELECT
+                MAX(b.FROM_DATE)
+            FROM
+                TLMADM_CRAT b
+            WHERE
+                a.CURRENCY = b.CURRENCY
+                AND b.FROM_DATE < TO_DATE('1990-01-01','YYYY-MM-DD')
+        )
+),
+TBL_MASTERPOSITIONBREAKS_SEB AS
+(
+    SELECT
+        TLMADM_BANK.AGENT_CODE,
+        CASE
+            WHEN STOCK_CODE IS NULL THEN
+                CASE
+                    WHEN LENGTH(STRING_27) = 12 THEN STRING_27
+                    ELSE 'N/A'
+                END
+            ELSE STOCK_CODE
+        END AS ISIN,
+        TLMADM_ITEM.STRING_27,
+        TLMADM_ITEM.STRING_28,
+        CASE WHEN LS_TYPE = 9030 THEN AMOUNT_6 ELSE 0 END AS BbhAmount,
+        CASE WHEN LS_TYPE = 9030 THEN 0 ELSE AMOUNT_6 END AS SebAmount,
+        TLMADM_ITEM.STMT_DATE,
+        TLMADM_BANK.local_acc_no AS BbhAcctNum,
+        TLMADM_BANK.local_acc_no AS SebAcctNum,
+        TLMADM_ITEM.AMOUNT_5,
+        TLMADM_ITEM.Currency
+    FROM
+        TLMADM_BANK
+        INNER JOIN TLMADM_ITEM
+            ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+        LEFT JOIN TLMADM_STCK
+            ON TLMADM_ITEM.STOCK_ID = TLMADM_STCK.STOCK_ID
+    WHERE
+        TLMADM_BANK.AGENT_CODE = 'MUTUAL FUNDS- SEB'
+        AND TLMADM_ITEM.LS_TYPE IN (9030, 9099)
+        AND TLMADM_ITEM.FLAG_2 = 0
+),
+QRY_MASTERBREAKS_SEB_PARENT_AMTS AS
+(
+    SELECT
+        STOCK_CODE AS ISIN,
+        SebAcctNum,
+        MIN(SecID) AS MinOfSecID,
+        MAX(BbhAmount) AS MaxOfBbhAmount,
+        MAX(SebAmount) AS MaxOfSebAmount,
+        MAX(Statement) AS MaxOfStatement,
+        MAX(BbhAcctNum) AS MaxOfBbhAcctNum,
+        MAX(NAV) AS MaxOfNAV,
+        MIN(Currency) AS FirstOfCURRENCY
+    FROM
+        TBL_MASTERPOSITIONBREAKS_SEB
+    GROUP BY
+        STOCK_CODE,
+        SebAcctNum
+),
+TBL_BREAKDETAILS_SEB AS
+(
+    SELECT
+        CASE
+            WHEN STOCK_CODE IS NULL THEN
+                CASE
+                    WHEN LENGTH(STRING_27) = 12 THEN STRING_27
+                    ELSE 'N/A'
+                END
+            ELSE STOCK_CODE
+        END AS ISIN,
+        TLMADM_BANK.local_acc_no AS SebAcctNum,
+        TLMADM_DCOD.CODE_NAME,
+        CASE
+            WHEN LS_TYPE IN (9106, 9129) THEN AMOUNT_6 * -1
+            ELSE AMOUNT_6
+        END AS BreakQuantity,
+        TRUNC(SYS_ENTRY_DATE) AS BreakOpened,
+        TLMPX_DBO_TLM_REF_REASON_CATEGORY.NAME AS ReasonCategory,
+        TLMPX_DBO_TLM_REF_REASON_TYPE.NAME AS ReasonType,
+        TLMPX_DBO_TLM_BDR_NOTE.NOTE,
+        TLMADM_ITEM.ITEM_ID
+    FROM
+        TLMADM_BANK
+        INNER JOIN TLMADM_ITEM
+            ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+        LEFT JOIN TLMADM_DCOD
+            ON TLMADM_ITEM.BRAN_CODE = TLMADM_DCOD.CODE
+        LEFT JOIN TLMADM_STCK
+            ON TLMADM_ITEM.STOCK_ID = TLMADM_STCK.STOCK_ID
+        LEFT JOIN TLMPX_DBO_TLM_REF_REASON_TYPE
+            ON TLMADM_ITEM.REASON_TYPE_ID = TLMPX_DBO_TLM_REF_REASON_TYPE.REASON_TYPE_ID
+        LEFT JOIN TLMPX_DBO_TLM_REF_REASON_CATEGORY
+            ON TLMPX_DBO_TLM_REF_REASON_TYPE.REASON_CATEGORY_ID =
+               TLMPX_DBO_TLM_REF_REASON_CATEGORY.REASON_CATEGORY_ID
+        LEFT JOIN TLMPX_DBO_TLM_BDR_NOTE
+            ON TLMADM_ITEM.NOTE_ID = TLMPX_DBO_TLM_BDR_NOTE.ID
+    WHERE
+        TLMADM_BANK.AGENT_CODE = 'MUTUAL FUNDS- SEB'
+        AND TLMADM_ITEM.LS_TYPE NOT IN (9030, 9099)
+        AND TLMADM_ITEM.FLAG_2 = 0
+)
+SELECT DISTINCT
+    q.ISIN,
+    q.MinOfSecID AS SecID,
+    q.MaxOfBbhAcctNum AS BbhAcctNum,
+    q.SebAcctNum,
+    q.MaxOfStatement AS Statement,
+    q.MaxOfBbhAmount AS BbhAmount,
+    q.MaxOfSebAmount AS SebAmount,
+    ROUND(ABS(b.BreakQuantity), 6) AS Break,
+    q.FirstOfCURRENCY AS Curr,
+    q.MaxOfNAV AS Price,
+    ROUND((ABS(b.BreakQuantity) * q.MaxOfNAV) / f.CrossCurrencyRate, 2) AS BreakValue,
+    b.BreakOpened,
+    CASE
+        WHEN b.NOTE IS NULL OR b.NOTE = '' THEN b.ReasonType
+        ELSE b.NOTE
+    END AS BreakDescription
+FROM
+    TBL_FXRATES f
+    RIGHT JOIN QRY_MASTERBREAKS_SEB_PARENT_AMTS q
+        ON f.Currency = q.FirstOfCURRENCY
+    LEFT JOIN TBL_BREAKDETAILS_SEB b
+        ON q.ISIN = b.ISIN
+        AND q.SebAcctNum = b.SebAcctNum
+WHERE
+    b.BreakQuantity IS NOT NULL
+ORDER BY
+    q.ISIN,
+    q.SebAcctNum;
+
+==========================================================================	
+	
+SEB_POSITIONAL_BREAKS
+=====================
+
+WITH
+TBL_FXRATES AS
+(
+    SELECT
+        a.Currency,
+        a.Rate,
+        0.000001 AS CrossCurrencyRate,
+        a.FROM_DATE
+    FROM
+        TLMADM_CRAT a
+    WHERE
+        a.FROM_DATE =
+        (
+            SELECT
+                MAX(b.FROM_DATE)
+            FROM
+                TLMADM_CRAT b
+            WHERE
+                a.CURRENCY = b.CURRENCY
+                AND b.FROM_DATE < TO_DATE('1990-01-01','YYYY-MM-DD')
+        )
+),
+
+TBL_MASTERPOSITIONBREAKS_SEB AS
+(
+    SELECT
+        TLMADM_BANK.AGENT_CODE,
+        TLMADM_STCK.STOCK_CODE,
+        CASE
+            WHEN TLMADM_STCK.STOCK_CODE IS NULL THEN
+                CASE
+                    WHEN LENGTH(TLMADM_ITEM.STRING_27) = 12 THEN TLMADM_ITEM.STRING_27
+                    ELSE 'N/A'
+                END
+            ELSE TLMADM_STCK.STOCK_CODE
+        END AS ISIN,
+        TLMADM_ITEM.STRING_27,
+        TLMADM_ITEM.STRING_28,
+        TLMADM_ITEM.SEC_ID,
+        TLMADM_ITEM.STMT_DATE AS Statement,
+        TLMADM_ITEM.NAV,
+        CASE
+            WHEN TLMADM_ITEM.LS_TYPE = 9030 THEN TLMADM_ITEM.AMOUNT_6
+            ELSE 0
+        END AS BbhAmount,
+        CASE
+            WHEN TLMADM_ITEM.LS_TYPE = 9030 THEN 0
+            ELSE TLMADM_ITEM.AMOUNT_6
+        END AS SebAmount,
+        TLMADM_BANK.local_acc_no AS BbhAcctNum,
+        TLMADM_BANK.local_acc_no AS SebAcctNum,
+        TLMADM_ITEM.Currency
+    FROM
+        TLMADM_BANK
+        INNER JOIN TLMADM_ITEM
+            ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+        LEFT JOIN TLMADM_STCK
+            ON TLMADM_ITEM.STOCK_ID = TLMADM_STCK.STOCK_ID
+    WHERE
+        TLMADM_BANK.AGENT_CODE = 'MUTUAL FUNDS- SEB'
+        AND TLMADM_ITEM.LS_TYPE IN (9030, 9099)
+        AND TLMADM_ITEM.FLAG_2 = 0
+),
+
+QRY_MASTERBREAKS_SEB_PARENT_AMTS AS
+(
+    SELECT
+        ISIN,
+        SebAcctNum,
+        MIN(SEC_ID) AS SecID,
+        MAX(BbhAmount) AS BbhAmount,
+        MAX(SebAmount) AS SebAmount,
+        MAX(Statement) AS Statement,
+        MAX(BbhAcctNum) AS BbhAcctNum,
+        MAX(NAV) AS NAV,
+        MIN(Currency) AS Currency
+    FROM
+        TBL_MASTERPOSITIONBREAKS_SEB
+    GROUP BY
+        ISIN,
+        SebAcctNum
+),
+
+TBL_BREAKDETAILS_SEB AS
+(
+    SELECT
+        CASE
+            WHEN TLMADM_STCK.STOCK_CODE IS NULL THEN
+                CASE
+                    WHEN LENGTH(TLMADM_ITEM.STRING_27) = 12 THEN TLMADM_ITEM.STRING_27
+                    ELSE 'N/A'
+                END
+            ELSE TLMADM_STCK.STOCK_CODE
+        END AS ISIN,
+        TLMADM_BANK.local_acc_no AS SebAcctNum,
+        TLMADM_DCOD.CODE_NAME AS Dept,
+        CASE
+            WHEN TLMADM_ITEM.LS_TYPE IN (9106, 9129) THEN TLMADM_ITEM.AMOUNT_6 * -1
+            ELSE TLMADM_ITEM.AMOUNT_6
+        END AS BreakQuantity,
+        TRUNC(TLMADM_ITEM.SYS_ENTRY_DATE) AS BreakOpened,
+        TLMPX_DBO_TLM_REF_REASON_TYPE.NAME AS ReasonType,
+        TLMPX_DBO_TLM_BDR_NOTE.NOTE AS BreakDescription,
+        TLMADM_ITEM.ITEM_ID,
+        TLMADM_ITEM.LS_TYPE AS BreakCode
+    FROM
+        TLMADM_BANK
+        INNER JOIN TLMADM_ITEM
+            ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+        LEFT JOIN TLMADM_DCOD
+            ON TLMADM_ITEM.BRAN_CODE = TLMADM_DCOD.CODE
+        LEFT JOIN TLMADM_STCK
+            ON TLMADM_ITEM.STOCK_ID = TLMADM_STCK.STOCK_ID
+        LEFT JOIN TLMPX_DBO_TLM_REF_REASON_TYPE
+            ON TLMADM_ITEM.REASON_TYPE_ID = TLMPX_DBO_TLM_REF_REASON_TYPE.REASON_TYPE_ID
+        LEFT JOIN TLMPX_DBO_TLM_BDR_NOTE
+            ON TLMADM_ITEM.NOTE_ID = TLMPX_DBO_TLM_BDR_NOTE.ID
+    WHERE
+        TLMADM_BANK.AGENT_CODE = 'MUTUAL FUNDS- SEB'
+        AND TLMADM_ITEM.LS_TYPE NOT IN (9030, 9099)
+        AND TLMADM_ITEM.FLAG_2 = 0
+),
+
+QRY_POSBREAKS_SEB_SETUP AS
+(
+    SELECT
+        q.ISIN,
+        q.SecID,
+        q.Statement AS SecName,
+        q.BbhAmount,
+        q.SebAmount,
+        ROUND(ABS(NVL(q.BbhAmount,0) - NVL(q.SebAmount,0)), 6) AS Break,
+        ROUND((ABS(NVL(q.BbhAmount,0) - NVL(q.SebAmount,0)) * q.NAV) / f.CrossCurrencyRate, 2) AS BreakValue_SEK,
+        q.BbhAcctNum,
+        q.SebAcctNum,
+        b.Dept,
+        b.ReasonType,
+        ABS(b.BreakQuantity) AS BreakQty,
+        b.BreakOpened,
+        TRUNC(SYSDATE) - b.BreakOpened AS Age,
+        NVL(b.BreakDescription, b.ReasonType) AS BreakDescription,
+        b.BreakCode
+    FROM
+        TBL_FXRATES f
+        RIGHT JOIN QRY_MASTERBREAKS_SEB_PARENT_AMTS q
+            ON f.Currency = q.Currency
+        LEFT JOIN TBL_BREAKDETAILS_SEB b
+            ON q.ISIN = b.ISIN
+            AND q.SebAcctNum = b.SebAcctNum
+)
+
+SELECT
+    ISIN,
+    SecID,
+    SecName,
+    BbhAmount,
+    SebAmount,
+    Break,
+    BreakValue_SEK,
+    BbhAcctNum,
+    SebAcctNum,
+    Dept,
+    ReasonType AS BreakCode,
+    BreakQty,
+    BreakOpened,
+    Age,
+    BreakDescription
+FROM
+    QRY_POSBREAKS_SEB_SETUP
+WHERE
+    BreakCode NOT IN (100000285, 100000288)
+ORDER BY
+    Age DESC;
