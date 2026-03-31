@@ -383,3 +383,56 @@ WHERE
     BreakCode NOT IN (100000285, 100000288)
 ORDER BY
     Age DESC;
+	====================================
+	
+SELECT
+    [qry PosBreaks (SEB Setup)].ISIN,
+    [qry PosBreaks (SEB Setup)].SecID,
+    [qry PosBreaks (SEB Setup)].SecName,
+    [qry PosBreaks (SEB Setup)].BbhAmount,
+    [qry PosBreaks (SEB Setup)].SebAmount,
+    [qry PosBreaks (SEB Setup)].Break,
+    [qry PosBreaks (SEB Setup)].[BreakValue (SEK)],
+    [qry PosBreaks (SEB Setup)].BbhAcctNum,
+    [qry PosBreaks (SEB Setup)].SebAcctNum,
+    [qry PosBreaks (SEB Setup)].Dept,
+    [qry PosBreaks (SEB Setup)].ReasonType AS BreakCode,
+    [qry PosBreaks (SEB Setup)].BreakQty,
+    [qry PosBreaks (SEB Setup)].BreakOpened,
+    [qry PosBreaks (SEB Setup)].Age,
+    [qry PosBreaks (SEB Setup)].BreakDescription
+FROM
+    [qry PosBreaks (SEB Setup)]
+WHERE
+    [qry PosBreaks (SEB Setup)].BreakCode NOT IN (100000285, 100000288)
+ORDER BY
+    [qry PosBreaks (SEB Setup)].Age DESC;
+
+==================================================================
+
+SELECT DISTINCT
+    [qry_MasterBreaks_SEB_Parent Amts].ISIN,
+    [qry_MasterBreaks_SEB_Parent Amts].FirstOfSecName AS SecName,
+    [qry_MasterBreaks_SEB_Parent Amts].MinOfSecID AS SecID,
+    [qry_MasterBreaks_SEB_Parent Amts].MaxOfBbhAmount AS BbhAmount,
+    [qry_MasterBreaks_SEB_Parent Amts].MaxOfSebAmount AS SebAmount,
+    Round(Abs(Nz([MaxOfBbhAmount],0) - Nz([MaxOfSebAmount],0)), 6) AS Break,
+    Round(([Break] * [MaxOfNAV]) / [CrossCurrencyRate], 2) AS [BreakValue (SEK)],
+    [qry_MasterBreaks_SEB_Parent Amts].MaxOfBbhAcctNum AS BbhAcctNum,
+    [qry_MasterBreaks_SEB_Parent Amts].SebAcctNum,
+    tbl_BreakDetails_SEB.Dept,
+    tbl_BreakDetails_SEB.ReasonType,
+    Abs([BreakQuantity]) AS BreakQty,
+    tbl_BreakDetails_SEB.BreakOpened,
+    Date() - [BreakOpened] AS Age,
+    tbl_BreakDetails_SEB.AuditTrail AS BreakDescription,
+    tbl_BreakDetails_SEB.BreakCode
+FROM
+    (
+        tbl_FxRates_SEB
+        RIGHT JOIN [qry_MasterBreaks_SEB_Parent Amts]
+            ON tbl_FxRates_SEB.Currency = [qry_MasterBreaks_SEB_Parent Amts].FirstOfCURRENCY
+    )
+    LEFT JOIN tbl_BreakDetails_SEB
+        ON [qry_MasterBreaks_SEB_Parent Amts].SebAcctNum = tbl_BreakDetails_SEB.SebAcctNum
+        AND [qry_MasterBreaks_SEB_Parent Amts].ISIN = tbl_BreakDetails_SEB.ISIN;	
