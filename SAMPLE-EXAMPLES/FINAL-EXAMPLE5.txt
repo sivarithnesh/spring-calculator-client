@@ -1,0 +1,252 @@
+MAIN_BREAK_REPORT
+=================
+SELECT 
+    CD.SourceDB,
+    CD.ISIN,
+    PD.SecID,
+    PD.SecName,
+    CD.LOCAL_ACC_NO,
+    CD.BBHExAcctNum,
+    CD.BbhAcctNum,
+    PD2.BbhAcctName,
+    CD.Statement,
+    CD.BreakQuantity,
+    CD.BreakType,
+    CD.BreakDesc,
+    CD.Dept,
+    CD.BreakOpened,
+    (TRUNC(SYSDATE) - CD.BreakOpened) AS Age,
+    CD.AuditTrail AS BreakAddedBy,
+    PD.Price,
+    NVL(CD.BreakQuantity * PD.Price,0) AS Exposure,
+    CD.ReasonType
+FROM 
+    qry_MgmtRptg_ParentData2 PD2
+RIGHT JOIN 
+    (qry_MgmtRptg_ChildData CD
+     LEFT JOIN qry_MgmtRptg_ParentData PD
+        ON CD.ISIN = PD.STOCK_CODE)
+ON PD2.BbhAcctNum = CD.BbhAcctNum;
+
+CHILD_DATA_QUERY
+================
+
+SELECT 
+    t.SourceDB,
+    t.ISIN,
+    t.LOCAL_ACC_NO,
+    '' AS BBHExAcctNum,
+    t.BbhAcctNum,
+    t.Statement,
+    t.BreakCode,
+    t.BreakQuantity,
+    t.BreakDesc,
+    t.BreakOpened,
+    t.AuditTrail,
+    t.BreakType,
+    t.BbhSideBreak,
+    t.Dept,
+    t.ReasonType
+FROM 
+    tbl_BreakDetails_MonthlyAndHedge t
+WHERE 
+    t.BreakOpened <= TRUNC(SYSDATE) - EXTRACT(DAY FROM SYSDATE)
+    AND t.Resolved IS NULL;
+	
+PARENT_DATA_QUERY
+==================
+SELECT 
+    MIN(t.STOCK_CODE) AS STOCK_CODE,
+    MIN(t.SecID) AS SecID,
+    MAX(t.SecName) AS SecName,
+    MAX(t.Statement) AS Statement,
+    MAX(t.Price) AS Price
+FROM 
+    tbl_MasterPositionBreaks t
+GROUP BY 
+    t.STOCK_CODE;
+	
+	
+	PARENT_DATA2_QUERY
+	=================
+	
+	SELECT 
+    t.BbhAcctNum,
+    MAX(t.BbhAcctName) AS BbhAcctName
+FROM 
+    tbl_MasterPositionBreaks t
+GROUP BY 
+    t.BbhAcctNum
+HAVING 
+    t.BbhAcctNum NOT IN ('', 'Multiple Accounts', 'N/A', 'Omni', 'Omnibus');
+	
+	
+	MASTER_POSITION_BREAKS (MPB)
+	===========================
+	SELECT 
+    B.LOCAL_ACC_NO,
+    B.AGENT_CODE,
+    I.STRING_27 AS SecID,
+    I.STMT_DATE AS Statement,
+    S.STOCK_CODE,
+    I.STRING_29 AS SecName,
+    I.STRING_21 AS BBHExtAcctNum,
+    I.SYS_ENTRY_DATE,
+
+    CASE 
+        WHEN I.LS_TYPE = 9030 THEN I.AMOUNT_6 
+        ELSE 0 
+    END AS BbhAmount,
+
+    CASE 
+        WHEN I.LS_TYPE = 9030 THEN 0 
+        ELSE I.AMOUNT_6 
+    END AS NsccAmount,
+
+    CASE 
+        WHEN I.STRING_14 IS NOT NULL AND TRIM(I.STRING_14) <> '' 
+            THEN I.STRING_14
+        WHEN SUBSTR(B.LOCAL_ACC_NO,8,1)='-' 
+            THEN SUBSTR(B.LOCAL_ACC_NO,1,7)
+        ELSE 'OMNIBUS'
+    END AS BbhAcctNum
+
+FROM TLMADM_BANK B
+JOIN TLMADM_ITEM I
+    ON B.CORR_ACC_NO = I.CORR_ACC_NO
+LEFT JOIN TLMADM_STCK S
+    ON I.STOCK_ID = S.STOCK_ID
+WHERE 
+    B.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+    AND I.LS_TYPE IN (9030,9099)
+    AND I.FLAG_2 = 0;
+	
+	
+	FINAL_BREAK_REPORT
+	==================
+	WITH 
+CHILD_DATA_QUERY AS (
+    -- paste Query 2 here
+),
+PARENT_DATA_QUERY AS (
+    -- paste Query 3 here
+),
+PARENT_DATA2_QUERY AS (
+    -- paste Query 4 here
+)
+SELECT 
+    CD.SourceDB,
+    CD.ISIN,
+    PD.SecID,
+    PD.SecName,
+    CD.LOCAL_ACC_NO,
+    CD.BBHExAcctNum,
+    CD.BbhAcctNum,
+    PD2.BbhAcctName,
+    CD.Statement,
+    CD.BreakQuantity,
+    CD.BreakType,
+    CD.BreakDesc,
+    CD.Dept,
+    CD.BreakOpened,
+    (TRUNC(SYSDATE) - CD.BreakOpened) AS Age,
+    PD.Price,
+    NVL(CD.BreakQuantity * PD.Price,0) AS Exposure
+FROM 
+    PARENT_DATA2_QUERY PD2
+RIGHT JOIN 
+    (CHILD_DATA_QUERY CD
+     LEFT JOIN PARENT_DATA_QUERY PD
+        ON CD.ISIN = PD.STOCK_CODE)
+ON PD2.BbhAcctNum = CD.BbhAcctNum;
+
+
+FINAL FULL QuerY
+=================
+
+WITH 
+
+CHILD_DATA_QUERY AS (
+    SELECT 
+        t.SourceDB,
+        t.ISIN,
+        t.LOCAL_ACC_NO,
+        '' AS BBHExAcctNum,
+        t.BbhAcctNum,
+        t.Statement,
+        t.BreakCode,
+        t.BreakQuantity,
+        t.BreakDesc,
+        t.BreakOpened,
+        t.AuditTrail,
+        t.BreakType,
+        t.BbhSideBreak,
+        t.Dept,
+        t.ReasonType
+    FROM 
+        tbl_BreakDetails_MonthlyAndHedge t
+    WHERE 
+        t.BreakOpened <= TRUNC(SYSDATE) - EXTRACT(DAY FROM SYSDATE)
+        AND t.Resolved IS NULL
+),
+
+PARENT_DATA_QUERY AS (
+    SELECT 
+        MIN(t.STOCK_CODE) AS STOCK_CODE,
+        MIN(t.SecID) AS SecID,
+        MAX(t.SecName) AS SecName,
+        MAX(t.Statement) AS Statement,
+        MAX(t.Price) AS Price
+    FROM 
+        tbl_MasterPositionBreaks t
+    GROUP BY 
+        t.STOCK_CODE
+),
+
+PARENT_DATA2_QUERY AS (
+    SELECT 
+        t.BbhAcctNum,
+        MAX(t.BbhAcctName) AS BbhAcctName
+    FROM 
+        tbl_MasterPositionBreaks t
+    GROUP BY 
+        t.BbhAcctNum
+    HAVING 
+        t.BbhAcctNum NOT IN ('', 'Multiple Accounts', 'N/A', 'Omni', 'Omnibus')
+)
+
+SELECT 
+    CD.SourceDB,
+    CD.ISIN,
+    PD.SecID,
+    PD.SecName,
+    CD.LOCAL_ACC_NO,
+    CD.BBHExAcctNum,
+    CD.BbhAcctNum,
+    PD2.BbhAcctName,
+    CD.Statement,
+    CD.BreakQuantity,
+    CD.BreakType,
+    CD.BreakDesc,
+    CD.Dept,
+    CD.BreakOpened,
+    (TRUNC(SYSDATE) - CD.BreakOpened) AS Age,
+    CD.AuditTrail AS BreakAddedBy,
+    PD.Price,
+    NVL(CD.BreakQuantity * PD.Price, 0) AS Exposure,
+    CD.ReasonType
+
+FROM 
+    PARENT_DATA2_QUERY PD2
+RIGHT JOIN 
+    (CHILD_DATA_QUERY CD
+     LEFT JOIN PARENT_DATA_QUERY PD
+        ON CD.ISIN = PD.STOCK_CODE)
+ON PD2.BbhAcctNum = CD.BbhAcctNum
+
+ORDER BY 
+    CD.Dept,
+    CD.BreakType;
+
+
+	
