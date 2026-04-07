@@ -1,0 +1,99 @@
+WITH 
+
+/* 🔹 BASE TABLE 1 */
+BREAK_DETAILS AS (
+    SELECT *
+    FROM tbl_BreakDetails_MonthlyAndHedge
+),
+
+/* 🔹 BASE TABLE 2 */
+MASTER_POSITION_BREAKS AS (
+    SELECT *
+    FROM tbl_MasterPositionBreaks
+),
+
+/* 🔹 CHILD QUERY */
+CHILD_DATA_QUERY AS (
+    SELECT 
+        t.SourceDB,
+        t.ISIN,
+        t.LOCAL_ACC_NO,
+        '' AS BBHExAcctNum,
+        t.BbhAcctNum,
+        t.Statement,
+        t.BreakCode,
+        t.BreakQuantity,
+        t.BreakDesc,
+        t.BreakOpened,
+        t.AuditTrail,
+        t.BreakType,
+        t.BbhSideBreak,
+        t.Dept,
+        t.ReasonType
+    FROM 
+        BREAK_DETAILS t
+    WHERE 
+        t.BreakOpened <= TRUNC(SYSDATE) - EXTRACT(DAY FROM SYSDATE)
+        AND t.Resolved IS NULL
+),
+
+/* 🔹 PARENT QUERY */
+PARENT_DATA_QUERY AS (
+    SELECT 
+        MIN(t.STOCK_CODE) AS STOCK_CODE,
+        MIN(t.SecID) AS SecID,
+        MAX(t.SecName) AS SecName,
+        MAX(t.Statement) AS Statement,
+        MAX(t.Price) AS Price
+    FROM 
+        MASTER_POSITION_BREAKS t
+    GROUP BY 
+        t.STOCK_CODE
+),
+
+/* 🔹 PARENT ACCOUNT NAME QUERY */
+PARENT_DATA2_QUERY AS (
+    SELECT 
+        t.BbhAcctNum,
+        MAX(t.BbhAcctName) AS BbhAcctName
+    FROM 
+        MASTER_POSITION_BREAKS t
+    GROUP BY 
+        t.BbhAcctNum
+    HAVING 
+        t.BbhAcctNum NOT IN ('', 'Multiple Accounts', 'N/A', 'Omni', 'Omnibus')
+)
+
+/* 🔹 FINAL QUERY */
+SELECT 
+    CD.SourceDB,
+    CD.ISIN,
+    PD.SecID,
+    PD.SecName,
+    CD.LOCAL_ACC_NO,
+    CD.BBHExAcctNum,
+    CD.BbhAcctNum,
+    PD2.BbhAcctName,
+    CD.Statement,
+    CD.BreakQuantity,
+    CD.BreakType,
+    CD.BreakDesc,
+    CD.Dept,
+    CD.BreakOpened,
+    (TRUNC(SYSDATE) - CD.BreakOpened) AS Age,
+    CD.AuditTrail AS BreakAddedBy,
+    PD.Price,
+    NVL(CD.BreakQuantity * PD.Price, 0) AS Exposure,
+    CD.ReasonType
+
+FROM 
+    PARENT_DATA2_QUERY PD2
+RIGHT JOIN 
+    (CHILD_DATA_QUERY CD
+     LEFT JOIN PARENT_DATA_QUERY PD
+        ON CD.ISIN = PD.STOCK_CODE)
+ON PD2.BbhAcctNum = CD.BbhAcctNum
+
+ORDER BY 
+    CD.Dept,
+    CD.BreakType;
