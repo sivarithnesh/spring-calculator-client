@@ -164,3 +164,48 @@ ON BANK(AGENT_CODE)
 INDEXTYPE IS CTXSYS.CONTEXT;
 
 EXEC CTX_DDL.SYNC_INDEX('idx_agent_text');
+
+====================================================
+
+WITH base_data AS (
+    SELECT 
+        b.AGENT_CODE,
+        b.LOCAL_ACC_NO,
+        NVL(s.STOCK_CODE, 'N/A') AS ISIN,
+        i.LS_TYPE,
+        i.FLAG_2
+    FROM BANK b
+    INNER JOIN ITEM i ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    LEFT JOIN STCK s ON i.STOCK_ID = s.STOCK_ID
+)
+
+SELECT bd.*, 'NSCC' AS SOURCEDB
+FROM base_data bd
+WHERE bd.AGENT_CODE LIKE '%NSCC%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'MONTHLY'
+FROM base_data bd
+WHERE bd.AGENT_CODE LIKE '%MONTH%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'SWIFTDAILY'
+FROM base_data bd
+WHERE bd.AGENT_CODE LIKE '%SWIFT%'
+  AND bd.AGENT_CODE LIKE '%DAILY%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'HEDGE'
+FROM base_data bd
+WHERE bd.AGENT_CODE LIKE '%HEDGE%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0;
