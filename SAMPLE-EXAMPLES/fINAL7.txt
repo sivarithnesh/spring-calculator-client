@@ -1,0 +1,166 @@
+WITH base_data AS (
+    SELECT 
+        b.AGENT_CODE,
+        b.LOCAL_ACC_NO,
+        NVL(s.STOCK_CODE, 'N/A') AS ISIN,
+
+        CASE
+            WHEN i.STRING_14 IS NOT NULL AND TRIM(i.STRING_14) <> '' 
+                THEN i.STRING_14
+            WHEN SUBSTR(b.LOCAL_ACC_NO, 8, 1) = '-' 
+                THEN SUBSTR(b.LOCAL_ACC_NO, 1, 7)
+            ELSE 'OMNIBUS'
+        END AS BbhAcctNum,
+
+        i.STMT_DATE AS Statement,
+
+        CASE
+            WHEN i.LS_TYPE IN (9106, 9129) THEN i.AMOUNT_6 * -1
+            ELSE i.AMOUNT_6
+        END AS BreakQuantity,
+
+        TRUNC(i.SYS_ENTRY_DATE) AS BreakOpened,
+
+        d.CODE_NAME AS Dept,
+        rt.NAME AS ReasonType,
+        rt.NAME AS BREAKType,
+        rt.DESCRIPTION AS ReasonDESCRIPTION,
+        NVL(rt.DESCRIPTION, rt.NAME) AS BreakDesc,
+        n.NOTE AS AuditTrail,
+        i.STRING_6 AS Comments,
+
+        i.LS_TYPE,
+        i.FLAG_2
+
+    FROM BANK b
+
+    INNER JOIN ITEM i 
+        ON b.CORR_ACC_NO = i.CORR_ACC_NO
+
+    LEFT JOIN DCOD d 
+        ON i.BRAN_CODE = d.CODEC
+
+    LEFT JOIN STCK s 
+        ON i.STOCK_ID = s.STOCK_ID
+
+    LEFT JOIN TLM_REF_REASON_TYPE rt 
+        ON i.REASON_TYPE_ID = rt.REASON_TYPE_ID
+
+    LEFT JOIN TLM_BDR_NOTE n 
+        ON i.NOTE_ID = n.ID
+)
+
+-- ✅ UNION PART (FAST FILTERING)
+
+SELECT bd.*, 'NSCC' AS SOURCEDB
+FROM base_data bd
+WHERE UPPER(bd.AGENT_CODE) LIKE '%MUTUAL FUNDS - NSCC TRANS POS%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'MONTHLY' AS SOURCEDB
+FROM base_data bd
+WHERE UPPER(bd.AGENT_CODE) LIKE '%MUTUAL FUNDS - MONTHLY POSITIONS%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'SWIFTDAILY' AS SOURCEDB
+FROM base_data bd
+WHERE UPPER(bd.AGENT_CODE) LIKE '%MUTUAL FUNDS - SWIFT DAILY POSITIONS%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'HEDGE' AS SOURCEDB
+FROM base_data bd
+WHERE UPPER(bd.AGENT_CODE) LIKE '%MUTUAL FUNDS - HEDGE%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0;
+ ============================================ 
+  
+WITH base_data AS (
+    SELECT 
+        b.AGENT_CODE,
+        b.LOCAL_ACC_NO,
+        NVL(s.STOCK_CODE, 'N/A') AS ISIN,
+
+        CASE
+            WHEN i.STRING_14 IS NOT NULL AND TRIM(i.STRING_14) <> '' 
+                THEN i.STRING_14
+            WHEN SUBSTR(b.LOCAL_ACC_NO, 8, 1) = '-' 
+                THEN SUBSTR(b.LOCAL_ACC_NO, 1, 7)
+            ELSE 'OMNIBUS'
+        END AS BbhAcctNum,
+
+        i.STMT_DATE AS Statement,
+
+        CASE
+            WHEN i.LS_TYPE IN (9106, 9129) THEN i.AMOUNT_6 * -1
+            ELSE i.AMOUNT_6
+        END AS BreakQuantity,
+
+        TRUNC(i.SYS_ENTRY_DATE) AS BreakOpened,
+
+        d.CODE_NAME AS Dept,
+        rt.NAME AS ReasonType,
+        rt.NAME AS BREAKType,
+        rt.DESCRIPTION AS ReasonDESCRIPTION,
+        NVL(rt.DESCRIPTION, rt.NAME) AS BreakDesc,
+        n.NOTE AS AuditTrail,
+        i.STRING_6 AS Comments,
+
+        i.LS_TYPE,
+        i.FLAG_2
+
+    FROM BANK b
+    INNER JOIN ITEM i ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    LEFT JOIN DCOD d ON i.BRAN_CODE = d.CODEC
+    LEFT JOIN STCK s ON i.STOCK_ID = s.STOCK_ID
+    LEFT JOIN TLM_REF_REASON_TYPE rt ON i.REASON_TYPE_ID = rt.REASON_TYPE_ID
+    LEFT JOIN TLM_BDR_NOTE n ON i.NOTE_ID = n.ID
+)
+
+-- 🔥 FAST FILTER USING ORACLE TEXT
+
+SELECT bd.*, 'NSCC' AS SOURCEDB
+FROM base_data bd
+WHERE CONTAINS(bd.AGENT_CODE, 'NSCC', 1) > 0
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'MONTHLY' AS SOURCEDB
+FROM base_data bd
+WHERE CONTAINS(bd.AGENT_CODE, 'MONTHLY', 1) > 0
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'SWIFTDAILY' AS SOURCEDB
+FROM base_data bd
+WHERE CONTAINS(bd.AGENT_CODE, 'SWIFT AND DAILY', 1) > 0
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'HEDGE' AS SOURCEDB
+FROM base_data bd
+WHERE CONTAINS(bd.AGENT_CODE, 'HEDGE', 1) > 0
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0;	
+	
+	
+	
+	CREATE INDEX idx_agent_text 
+ON BANK(AGENT_CODE) 
+INDEXTYPE IS CTXSYS.CONTEXT;
+
+EXEC CTX_DDL.SYNC_INDEX('idx_agent_text');
