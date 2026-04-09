@@ -165,7 +165,8 @@ INDEXTYPE IS CTXSYS.CONTEXT;
 
 EXEC CTX_DDL.SYNC_INDEX('idx_agent_text');
 
-====================================================
+===============================================================
+
 
 WITH base_data AS (
     SELECT 
@@ -209,3 +210,87 @@ FROM base_data bd
 WHERE bd.AGENT_CODE LIKE '%HEDGE%'
   AND bd.LS_TYPE NOT IN (9030, 9099)
   AND bd.FLAG_2 = 0;
+  
+  WITH base_data AS (
+    SELECT /*+ MATERIALIZE */
+        b.AGENT_CODE,
+        b.LOCAL_ACC_NO,
+        NVL(s.STOCK_CODE, 'N/A') AS ISIN,
+        i.LS_TYPE,
+        i.FLAG_2
+    FROM BANK b
+    INNER JOIN ITEM i ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    LEFT JOIN STCK s ON i.STOCK_ID = s.STOCK_ID
+)
+
+SELECT bd.*, 'NSCC' AS SOURCEDB
+FROM base_data bd
+WHERE bd.AGENT_CODE LIKE '%NSCC%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'MONTHLY'
+FROM base_data bd
+WHERE bd.AGENT_CODE LIKE '%MONTH%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0;
+
+===========================================================
+
+WITH filtered_bank AS (
+    SELECT /*+ MATERIALIZE */
+        AGENT_CODE,
+        CORR_ACC_NO,
+        LOCAL_ACC_NO
+    FROM BANK
+    WHERE AGENT_CODE LIKE '%NSCC%'
+       OR AGENT_CODE LIKE '%MONTH%'
+),
+
+base_data AS (
+    SELECT 
+        b.AGENT_CODE,
+        b.LOCAL_ACC_NO,
+        NVL(s.STOCK_CODE, 'N/A') AS ISIN,
+        i.LS_TYPE,
+        i.FLAG_2
+    FROM filtered_bank b
+    INNER JOIN ITEM i ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    LEFT JOIN STCK s ON i.STOCK_ID = s.STOCK_ID
+)
+
+SELECT bd.*, 'NSCC' AS SOURCEDB
+FROM base_data bd
+WHERE bd.AGENT_CODE LIKE '%NSCC%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0
+
+UNION ALL
+
+SELECT bd.*, 'MONTHLY'
+FROM base_data bd
+WHERE bd.AGENT_CODE LIKE '%MONTH%'
+  AND bd.LS_TYPE NOT IN (9030, 9099)
+  AND bd.FLAG_2 = 0;
+  
+  =====================================================
+  
+  SELECT 
+    b.AGENT_CODE,
+    b.LOCAL_ACC_NO,
+    NVL(s.STOCK_CODE, 'N/A') AS ISIN,
+    i.LS_TYPE,
+    i.FLAG_2,
+    CASE
+        WHEN b.AGENT_CODE LIKE '%NSCC%' THEN 'NSCC'
+        WHEN b.AGENT_CODE LIKE '%MONTH%' THEN 'MONTHLY'
+    END AS SOURCEDB
+FROM BANK b
+INNER JOIN ITEM i ON b.CORR_ACC_NO = i.CORR_ACC_NO
+LEFT JOIN STCK s ON i.STOCK_ID = s.STOCK_ID
+WHERE 
+    (b.AGENT_CODE LIKE '%NSCC%' OR b.AGENT_CODE LIKE '%MONTH%')
+    AND i.LS_TYPE NOT IN (9030, 9099)
+    AND i.FLAG_2 = 0;
