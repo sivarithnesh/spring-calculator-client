@@ -1,0 +1,171 @@
+WITH T AS
+(
+    -- Break Details Query
+    SELECT 
+        b.LOCAL_ACC_NO,
+        NVL(s.STOCK_CODE, 'N/A') AS ISIN,
+        CASE 
+            WHEN i.STRING_14 IS NOT NULL AND TRIM(i.STRING_14) <> '' 
+                THEN i.STRING_14
+            WHEN SUBSTR(b.LOCAL_ACC_NO, 8, 1) = '-' 
+                THEN SUBSTR(b.LOCAL_ACC_NO, 1, 7)
+            ELSE 'OMNIBUS'
+        END AS BbhAcctNum,
+        i.STMT_DATE AS Statement,
+        CASE 
+            WHEN i.LS_TYPE IN (9106, 9129) THEN i.AMOUNT_6 * -1
+            ELSE i.AMOUNT_6
+        END AS BreakQuantity,
+        TRUNC(i.SYS_ENTRY_DATE) AS BreakOpened,
+        d.CODE_NAME AS Dept,
+        rt.NAME AS ReasonType,
+        n1.NOTE AS AuditTrail,
+        i.STRING_6 AS Comments
+    FROM TLMADM_BANK b
+    INNER JOIN TLMADM_ITEM i
+        ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    LEFT JOIN TLMADM_DCOD d
+        ON i.BRAN_CODE = d.CODEC
+    LEFT JOIN TLMADM_STCK s
+        ON i.STOCK_ID = s.STOCK_ID
+    LEFT JOIN TLMPX_DBO_TLM_REF_REASON_TYPE rt
+        ON i.REASON_TYPE_ID = rt.REASON_TYPE_ID
+    LEFT JOIN TLMPX_DBO_TLM_BDR_NOTE n1
+        ON i.NOTE_ID = n1.ID
+    WHERE 
+        b.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+        AND i.LS_TYPE NOT IN (9030, 9099)
+        AND i.FLAG_2 = 0
+),
+
+Q1 AS
+(
+    --  Master Break Aggregation
+    SELECT 
+        b.LOCAL_ACC_NO,
+        NVL(s.STOCK_CODE, 'N/A') AS STOCK_CODE,
+        MAX(i.STRING_27) AS FirstOfSecID,
+        MAX(i.STRING_28) AS FirstOfSecName,
+        MAX(i.STRING_29) AS FirstOfBbhAcctName,
+        MAX(i.STRING_14) AS FirstOfBbhAcctNum,
+        MAX(i.STRING_21) AS FirstOfBbhExtAcctNum,
+        MAX(i.STRING_21) AS LastOfNsccExtAcctNum,
+        SUM(CASE WHEN i.LS_TYPE = 9030 THEN i.AMOUNT_6 ELSE 0 END) AS MaxOfBbhAmount,
+        SUM(CASE WHEN i.LS_TYPE <> 9030 THEN i.AMOUNT_6 ELSE 0 END) AS MaxOfNsccAmount,
+        MAX(i.AMOUNT_5) AS MaxOfPrice
+    FROM TLMADM_BANK b
+    INNER JOIN TLMADM_ITEM i
+        ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    LEFT JOIN TLMADM_STCK s
+        ON i.STOCK_ID = s.STOCK_ID
+    WHERE 
+        b.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+        AND i.LS_TYPE IN (9030, 9099)
+        AND i.FLAG_2 = 0
+    GROUP BY 
+        b.LOCAL_ACC_NO, 
+        NVL(s.STOCK_CODE, 'N/A')
+),
+
+Q AS
+(
+    --  Escalation Setup Query
+    SELECT 
+        t.Dept,
+        t.ReasonType || ' - ' || t.ReasonType AS "2PartBreakType",
+        t.Statement AS ParentBreakDate,
+        t.Statement,
+        TRUNC(SYSDATE - t.Statement) AS ParentAge,
+        ROUND(SYSDATE - t.BreakOpened) AS "Discovery Age",
+        q1.FirstOfSecID AS "BBH ID",
+        t.ISIN,
+        q1.FirstOfSecName AS "Asset Description",
+        t.BbhAcctNum,
+        q1.FirstOfBbhAcctName AS BbhAcctName,
+        q1.MaxOfBbhAmount AS "BBH Balance",
+        q1.MaxOfNsccAmount AS "TA Balance",
+        ABS(q1.MaxOfBbhAmount - q1.MaxOfNsccAmount) AS MasterBreak,
+        t.BreakQuantity AS ChildBreak,
+        t.BreakQuantity * q1.MaxOfPrice AS Exposure,
+        t.AuditTrail AS "Break Description",
+        t.Comments,
+        'SwiftDaily' AS SourceDB,
+        q1.FirstOfBbhExtAcctNum AS BBHExtAcctNum,
+        q1.LastOfNsccExtAcctNum AS FundExtAcctNum,
+        q1.FirstOfBbhAcctNum || ' - ' || q1.FirstOfSecID AS SUB_ACC_NO
+    FROM T
+    LEFT JOIN Q1
+        ON t.LOCAL_ACC_NO = q1.LOCAL_ACC_NO
+        AND t.ISIN = q1.STOCK_CODE
+    WHERE 
+        (SYSDATE - t.BreakOpened) >= 30
+        AND t.ReasonType <> 'Resolved'
+),
+
+TA AS
+(
+    --  TA Names
+    SELECT 
+        i.STRING_27 AS BBHNum,
+        MAX(i.STRING_5) AS "TA Name"
+    FROM TLMADM_BANK b
+    INNER JOIN TLMADM_ITEM i
+        ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    WHERE 
+        b.AGENT_CODE LIKE 'MUTUAL FUNDS%'
+        AND i.LS_TYPE = 9030
+        AND i.FLAG_2 = 0
+    GROUP BY i.STRING_27
+),
+
+N AS
+(
+    --  Message Feed
+    SELECT 
+        mf.SUB_ACC_NO,
+        mf.DESCRIPTION AS "Statement Expected",
+        mf.BSLA AS "Contact #",
+        mf.BUS_CODE AS "Initial Method",
+        mf.BUS_OWNER AS "TA Email ID"
+    FROM TLMADM_BANK b
+    INNER JOIN TLMADM_MESSAGE_FEED mf
+        ON b.CORR_ACC_NO = mf.CORR_ACC_NO
+    WHERE 
+        mf.DESCRIPTION IS NOT NULL
+        AND TRIM(mf.DESCRIPTION) <> ''
+        AND mf.STATUS = 0
+        AND b.AGENT_CODE LIKE 'MUTUAL FUNDS%'
+)
+
+--  FINAL SELECT
+SELECT 
+    q."2PartBreakType" AS BreakType,
+    q.ParentBreakDate,
+    q.Statement,
+    q.ParentAge,
+    q."Discovery Age",
+    q."BBH ID",
+    q.ISIN,
+    q."Asset Description",
+    q.BbhAcctNum,
+    q.BbhAcctName,
+    q."BBH Balance",
+    q."TA Balance",
+    q.MasterBreak,
+    q.ChildBreak,
+    q.Exposure,
+    q."Break Description",
+    q.Comments AS ParentComments,
+    q.SourceDB,
+    q.BBHExtAcctNum,
+    q.FundExtAcctNum,
+    ta."TA Name",
+    n."Statement Expected",
+    n."Contact #",
+    n."Initial Method",
+    n."TA Email ID"
+FROM Q
+LEFT JOIN TA
+    ON q."BBH ID" = ta.BBHNum
+LEFT JOIN N
+    ON q.SUB_ACC_NO = n.SUB_ACC_NO;
