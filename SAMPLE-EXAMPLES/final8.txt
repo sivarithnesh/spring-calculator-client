@@ -1,0 +1,132 @@
+
+--SEB_RESEARCHANDDISCREPENCY
+============================
+WITH tbl_MasterPositionBreaks_SEB AS
+(
+    SELECT 
+        b.AGENT_CODE,
+        
+        CASE 
+            WHEN s.STOCK_CODE IS NULL THEN 
+                CASE WHEN LENGTH(i.STRING_27) = 12 THEN i.STRING_27 ELSE 'N/A' END
+            ELSE s.STOCK_CODE
+        END AS STOCK_CODE,
+
+        i.STRING_27,
+        i.STRING_28,
+
+        CASE WHEN i.LS_TYPE = 9030 THEN i.AMOUNT_6 ELSE 0 END AS BbhAmount,
+        CASE WHEN i.LS_TYPE = 9030 THEN 0 ELSE i.AMOUNT_6 END AS SebAmount,
+
+        i.STMT_DATE AS Statement,
+        b.local_acc_no AS BbhAcctNum,
+        b.local_acc_no AS SebAcctNum,
+
+        i.AMOUNT_5 AS NAV,
+        i.Currency,
+
+        i.ITEM_ID AS SecID,
+        i.STRING_28 AS SecName
+
+    FROM TLMADM_BANK b
+    JOIN TLMADM_ITEM i 
+        ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    LEFT JOIN TLMADM_STCK s 
+        ON i.STOCK_ID = s.STOCK_ID
+
+    WHERE b.AGENT_CODE = 'MUTUAL FUNDS - SEB'
+      AND i.LS_TYPE IN (9030, 9099)
+      AND i.FLAG_2 = 0
+),
+
+tbl_BreakDetails_SEB AS
+(
+    SELECT 
+        CASE 
+            WHEN s.STOCK_CODE IS NULL THEN 
+                CASE WHEN LENGTH(i.STRING_27) = 12 THEN i.STRING_27 ELSE 'N/A' END
+            ELSE s.STOCK_CODE
+        END AS ISIN,
+
+        b.local_acc_no AS SebAcctNum,
+        rt.REASON_TYPE_ID,
+
+        CASE 
+            WHEN i.LS_TYPE IN (9106, 9129) THEN i.AMOUNT_6 * -1 
+            ELSE i.AMOUNT_6 
+        END AS Expr1,
+
+        TRUNC(i.SYS_ENTRY_DATE) AS BreakOpened,
+        d.CODE_NAME,
+        i.STRING_6,
+
+        rc.NAME AS ReasonCategory,
+        rt.NAME AS ReasonType,
+        n.NOTE,
+
+        i.ITEM_ID,
+        i.BREAK_CODE
+
+    FROM TLMADM_BANK b
+    JOIN TLMADM_ITEM i 
+        ON b.CORR_ACC_NO = i.CORR_ACC_NO
+    LEFT JOIN TLMADM_DCOD d 
+        ON i.BRAN_CODE = d.CODE
+    LEFT JOIN TLMADM_STCK s 
+        ON i.STOCK_ID = s.STOCK_ID
+    LEFT JOIN TLMPX_DBO_TLM_REF_REASON_TYPE rt 
+        ON i.REASON_TYPE_ID = rt.REASON_TYPE_ID
+    LEFT JOIN TLMPX_DBO_TLM_REF_REASON_CATEGORY rc 
+        ON rt.REASON_CATEGORY_ID = rc.REASON_CATEGORY_ID
+    LEFT JOIN TLMPX_DBO_TLM_BDR_NOTE n 
+        ON i.NOTE_ID = n.ID
+
+    WHERE b.AGENT_CODE = 'MUTUAL FUNDS - SEB'
+      AND i.LS_TYPE NOT IN (9030, 9099)
+      AND i.FLAG_2 = 0
+),
+
+qry_MasterBreaks_SEB_Parent_Amts AS
+(
+    SELECT
+        STOCK_CODE AS ISIN,
+        SebAcctNum,
+
+        MIN(SecID) AS MinOfSecID,
+
+        /* FIRST() replacement */
+        MIN(SecName) KEEP (DENSE_RANK FIRST ORDER BY SecID) AS FirstOfSecName,
+
+        MAX(BbhAmount) AS MaxOfBbhAmount,
+        MAX(SebAmount) AS MaxOfSebAmount,
+        MAX(Statement) AS MaxOfStatement,
+        MAX(BbhAcctNum) AS MaxOfBbhAcctNum,
+        MAX(NAV) AS MaxOfNAV,
+
+        MIN(Currency) KEEP (DENSE_RANK FIRST ORDER BY SecID) AS FirstOfCURRENCY
+
+    FROM tbl_MasterPositionBreaks_SEB
+    GROUP BY STOCK_CODE, SebAcctNum
+)
+
+-- FINAL MAIN QUERY
+SELECT DISTINCT
+    p.ISIN,
+    p.MinOfSecID AS SecID,
+    p.MaxOfBbhAcctNum AS BbhAcctNum,
+    p.SebAcctNum,
+    p.MaxOfStatement AS Statement,
+    p.MaxOfBbhAmount AS BbhAmount,
+    p.MaxOfSebAmount AS SebAmount,
+
+    b.BreakOpened,
+    b.NOTE AS BreakDesc
+
+FROM qry_MasterBreaks_SEB_Parent_Amts p
+LEFT JOIN tbl_BreakDetails_SEB b
+    ON p.SebAcctNum = b.SebAcctNum
+   AND p.ISIN = b.ISIN
+
+WHERE b.BREAK_CODE = 100000288
+
+ORDER BY p.MinOfSecID;
