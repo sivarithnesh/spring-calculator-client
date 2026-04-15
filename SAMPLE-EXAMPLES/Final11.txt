@@ -1,0 +1,103 @@
+
+//Hedge
+
+WITH qry_NewMsgFeedData AS (
+    SELECT 
+        MF.SUB_ACC_NO,
+        B.LOCAL_ACC_NO,
+        MF.DESCRIPTION AS Statement_Expected,
+        MF.BSLA AS Contact_No,
+        MF.BUS_CODE AS Initial_Method,
+        B.BUS_OWNER AS TA_Email_ID,
+        MF.STATUS
+    FROM TLMADM_BANK B
+    INNER JOIN TLMADM_MESSAGE_FEED MF 
+        ON B.CORR_ACC_NO = MF.CORR_ACC_NO
+    WHERE MF.DESCRIPTION <> ''
+      AND MF.STATUS = 0
+      AND B.AGENT_CODE LIKE 'MUTUAL FUNDS%'
+),
+
+qry_TA_Names AS (
+    SELECT 
+        I.STRING_27 AS BBHNum,
+        MAX(I.STRING_5) AS TA_Name
+    FROM TLMADM_BANK B
+    INNER JOIN TLMADM_ITEM I 
+        ON B.CORR_ACC_NO = I.CORR_ACC_NO
+    WHERE B.AGENT_CODE LIKE 'MUTUAL FUNDS%'
+      AND I.LS_TYPE = 9030
+      AND I.FLAG_2 = 0
+    GROUP BY I.STRING_27
+),
+
+tbl_MasterPositionBreaks AS (
+    SELECT 
+        B.AGENT_CODE,
+        B.LOCAL_ACC_NO,
+        NVL(ST.STOCK_CODE, 'N/A') AS ISIN,
+        I.STRING_27,
+        I.STRING_28,
+        I.AMOUNT_6 AS NscAmount,
+        I.STMT_DATE,
+        I.STRING_21 AS BBHExtAcctNum,
+        I.STRING_29 AS BbhAcctName
+    FROM TLMADM_BANK B
+    INNER JOIN TLMADM_ITEM I 
+        ON B.CORR_ACC_NO = I.CORR_ACC_NO
+    LEFT JOIN TLMADM_STCK ST 
+        ON I.STOCK_ID = ST.STOCK_ID
+    WHERE B.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+      AND I.LS_TYPE IN (9030, 9099)
+      AND I.FLAG_2 = 0
+),
+
+tbl_BreakDetails_MonthlyAndHedge AS (
+    SELECT 
+        B.LOCAL_ACC_NO,
+        NVL(ST.STOCK_CODE, 'N/A') AS ISIN,
+        I.STRING_14,
+        I.STMT_DATE,
+        I.AMOUNT_6,
+        I.SYS_ENTRY_DATE AS BreakOpened,
+        I.ITEM_DESC AS BreakDesc,
+        'NSCC' AS SourceDB
+    FROM TLMADM_BANK B
+    INNER JOIN TLMADM_ITEM I 
+        ON B.CORR_ACC_NO = I.CORR_ACC_NO
+    LEFT JOIN TLMADM_STCK ST 
+        ON I.STOCK_ID = ST.STOCK_ID
+    WHERE B.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+      AND I.LS_TYPE NOT IN (9030, 9099)
+      AND I.FLAG_2 = 0
+),
+
+qry_Escal_Details_HedgeSetup AS (
+    SELECT 
+        BD.LOCAL_ACC_NO,
+        BD.ISIN,
+        MP.STRING_27 AS BBHNum,
+        MP.BbhAcctName,
+        BD.AMOUNT_6 AS BbhAmount,
+        BD.BreakDesc,
+        BD.SourceDB,
+        TA.TA_Name
+    FROM tbl_MasterPositionBreaks MP
+    INNER JOIN tbl_BreakDetails_MonthlyAndHedge BD
+        ON MP.LOCAL_ACC_NO = BD.LOCAL_ACC_NO
+       AND MP.ISIN = BD.ISIN
+    LEFT JOIN qry_TA_Names TA
+        ON TA.BBHNum = MP.STRING_27
+)
+
+-- FINAL MAIN QUERY
+SELECT 
+    E.*,
+    N.Initial_Method,
+    N.TA_Email_ID,
+    N.Statement_Expected,
+    N.Contact_No
+FROM qry_Escal_Details_HedgeSetup E
+LEFT JOIN qry_NewMsgFeedData N
+    ON E.LOCAL_ACC_NO = N.SUB_ACC_NO
+ORDER BY E.LOCAL_ACC_NO;
