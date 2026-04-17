@@ -1,0 +1,43 @@
+WITH qry_MgmtRptg_Unresolved_MH AS
+(
+    SELECT 
+        tbl_BreakDetails_MonthlyAndHedge.LOCAL_ACC_NO,
+        tbl_BreakDetails_MonthlyAndHedge.ISIN,
+        tbl_BreakDetails_MonthlyAndHedge.BbhAcctNum
+    FROM 
+        tbl_BreakDetails_MonthlyAndHedge
+    WHERE 
+        tbl_BreakDetails_MonthlyAndHedge.Resolved IS NULL
+    GROUP BY 
+        tbl_BreakDetails_MonthlyAndHedge.LOCAL_ACC_NO,
+        tbl_BreakDetails_MonthlyAndHedge.ISIN,
+        tbl_BreakDetails_MonthlyAndHedge.BbhAcctNum
+)
+
+SELECT 
+    tbl_MasterPositionBreaks.SourceDB,
+    tbl_MasterPositionBreaks.STOCK_CODE,
+    tbl_MasterPositionBreaks.SecID,
+    tbl_MasterPositionBreaks.SecName,
+    tbl_MasterPositionBreaks.BbhAmount,
+    tbl_MasterPositionBreaks.NsccAmount AS FundAmount,
+    tbl_MasterPositionBreaks.Statement,
+    tbl_MasterPositionBreaks.BbhAcctNum,
+    tbl_MasterPositionBreaks.BbhAcctName,
+    tbl_MasterPositionBreaks.BBHExAcctNum,
+    tbl_MasterPositionBreaks.NsccExtAcctNum AS FundExtAcctNum,
+    tbl_MasterPositionBreaks.Price,
+    tbl_MasterPositionBreaks.Comments
+FROM 
+    tbl_MasterPositionBreaks
+INNER JOIN 
+    qry_MgmtRptg_Unresolved_MH
+ON 
+    tbl_MasterPositionBreaks.BbhAcctNum = qry_MgmtRptg_Unresolved_MH.BbhAcctNum
+    AND tbl_MasterPositionBreaks.STOCK_CODE = qry_MgmtRptg_Unresolved_MH.ISIN
+    AND tbl_MasterPositionBreaks.LOCAL_ACC_NO = qry_MgmtRptg_Unresolved_MH.LOCAL_ACC_NO
+WHERE 
+    tbl_MasterPositionBreaks.NsccAmount = 0
+ORDER BY 
+    tbl_MasterPositionBreaks.SourceDB,
+    tbl_MasterPositionBreaks.STOCK_CODE;
