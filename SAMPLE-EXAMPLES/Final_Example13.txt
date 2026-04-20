@@ -1,0 +1,63 @@
+WITH tbl_BreakDetails_MonthlyAndHedge AS (
+    -- Your existing CTE (already correct, keep as-is)
+    SELECT 
+        B.LOCAL_ACC_NO,
+        I.STMT_DATE,
+        I.SYS_ENTRY_DATE AS BreakOpened,
+        I.ITEM_ID,
+        I.STRING_6,
+        I.STRING_21,
+        I.REFERENCE,
+        I.AMOUNT_6,
+        I.LS_TYPE,
+        S.STOCK_CODE AS ISIN,
+        1 AS BreakQuantity,
+        I.AMOUNT_6 AS Price,
+        'Hedge' AS SourceDB,
+        'NA' AS BreakType,
+        'NA' AS Dept,
+        'NA' AS BreakDesc
+    FROM TLMADM_BANK B
+    JOIN TLMADM_ITEM I
+        ON B.CORR_ACC_NO = I.CORR_ACC_NO
+    LEFT JOIN TLMADM_STCK S
+        ON I.STOCK_ID = S.STOCK_ID
+    WHERE 
+        B.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+        AND I.LS_TYPE NOT IN (9030,9099)
+        AND I.FLAG_2 = 0
+),
+
+BaseData AS (
+    SELECT
+        Dept,
+        BreakType,
+        DATEDIFF(DAY, BreakOpened, GETDATE()) AS AgeDays
+    FROM tbl_BreakDetails_MonthlyAndHedge
+    WHERE 
+        SourceDB = 'Hedge'
+        AND BreakOpened IS NOT NULL
+)
+
+SELECT 
+    Dept,
+    BreakType,
+
+    SUM(CASE WHEN AgeDays BETWEEN 30 AND 59 THEN 1 ELSE 0 END) AS [30-59],
+    SUM(CASE WHEN AgeDays BETWEEN 60 AND 89 THEN 1 ELSE 0 END) AS [60-89],
+    SUM(CASE WHEN AgeDays BETWEEN 90 AND 119 THEN 1 ELSE 0 END) AS [90-119],
+    SUM(CASE WHEN AgeDays BETWEEN 120 AND 149 THEN 1 ELSE 0 END) AS [120-149],
+    SUM(CASE WHEN AgeDays BETWEEN 150 AND 179 THEN 1 ELSE 0 END) AS [150-179],
+    SUM(CASE WHEN AgeDays BETWEEN 180 AND 364 THEN 1 ELSE 0 END) AS [180-364],
+    SUM(CASE WHEN AgeDays BETWEEN 365 AND 729 THEN 1 ELSE 0 END) AS [1Yr],
+    SUM(CASE WHEN AgeDays BETWEEN 730 AND 1094 THEN 1 ELSE 0 END) AS [2Yr],
+    SUM(CASE WHEN AgeDays >= 1095 THEN 1 ELSE 0 END) AS [3Yr+]
+
+FROM BaseData
+WHERE AgeDays >= 30
+GROUP BY 
+    Dept,
+    BreakType
+ORDER BY 
+    Dept,
+    BreakType;
