@@ -1,0 +1,66 @@
+WITH MFS_Aging_AllData AS
+(
+    SELECT
+        tbl_BreakDetails_MonthlyAndHedge.Dept,
+        tbl_BreakDetails_MonthlyAndHedge.ISIN,
+        tbl_BreakDetails_MonthlyAndHedge.BreakOpened,
+        tbl_BreakDetails_MonthlyAndHedge.ReasonType AS BreakType
+    FROM tbl_BreakDetails_MonthlyAndHedge
+    WHERE tbl_BreakDetails_MonthlyAndHedge.Dept = 'MFS'
+      AND tbl_BreakDetails_MonthlyAndHedge.ReasonType <> 'Resolved'
+)
+
+SELECT
+    Dept,
+    BreakType,
+
+    COUNT(CASE
+            WHEN DATEDIFF(DAY, BreakOpened, GETDATE()) 
+                 BETWEEN 0 AND 30
+            THEN 1
+          END) AS Age_0_30,
+
+    COUNT(CASE
+            WHEN DATEDIFF(DAY, BreakOpened, GETDATE()) 
+                 BETWEEN 31 AND 60
+            THEN 1
+          END) AS Age_31_60,
+
+    COUNT(CASE
+            WHEN DATEDIFF(DAY, BreakOpened, GETDATE()) 
+                 BETWEEN 61 AND 90
+            THEN 1
+          END) AS Age_61_90,
+
+    COUNT(CASE
+            WHEN DATEDIFF(DAY, BreakOpened, GETDATE()) 
+                 BETWEEN 91 AND 120
+            THEN 1
+          END) AS Age_91_120,
+
+    COUNT(CASE
+            WHEN DATEDIFF(DAY, BreakOpened, GETDATE()) 
+                 BETWEEN 121 AND 150
+            THEN 1
+          END) AS Age_121_150,
+
+    COUNT(CASE
+            WHEN DATEDIFF(DAY, BreakOpened, GETDATE()) 
+                 BETWEEN 151 AND 180
+            THEN 1
+          END) AS Age_151_180,
+
+    COUNT(CASE
+            WHEN DATEDIFF(DAY, BreakOpened, GETDATE()) > 180
+            THEN 1
+          END) AS Age_180_Plus
+
+FROM MFS_Aging_AllData
+
+GROUP BY
+    Dept,
+    BreakType
+
+ORDER BY
+    Dept,
+    BreakType;
