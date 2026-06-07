@@ -1,0 +1,39 @@
+SELECT
+    Dept,
+    ReasonType,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE)-BreakOpened BETWEEN 30 AND 59
+            THEN 1 ELSE 0
+        END) AS AGE_30_59,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE)-BreakOpened BETWEEN 60 AND 89
+            THEN 1 ELSE 0
+        END) AS AGE_60_89,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE)-BreakOpened BETWEEN 90 AND 119
+            THEN 1 ELSE 0
+        END) AS AGE_90_119,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE)-BreakOpened BETWEEN 120 AND 149
+            THEN 1 ELSE 0
+        END) AS AGE_120_149,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE)-BreakOpened BETWEEN 150 AND 179
+            THEN 1 ELSE 0
+        END) AS AGE_150_179,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE)-BreakOpened >= 180
+            THEN 1 ELSE 0
+        END) AS AGE_180_PLUS
+
+FROM TBL_BREAKDETAILS_MONTHLYANDHEDGE
+WHERE ReasonType <> 'Resolved'
+  AND TRUNC(SYSDATE) - BreakOpened >= 30
+GROUP BY Dept, ReasonType
+ORDER BY Dept, ReasonType;
