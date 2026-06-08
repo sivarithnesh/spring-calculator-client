@@ -1,0 +1,14 @@
+Hi Mark,
+I am attaching the five SQL scripts that we need to test against PROD data. Once we receive the PROD sample data/output for these queries, we will verify the results in our local environment and compare whether the changes are working as expected.
+Regarding the report clarifications raised for:
+SEB MF Position Reporting
+SEB Researching Account Disc
+SEB MF Fractional Breaks
+Weekly MF Escalation Report Non Hedge
+We first need the PROD data/output to compare and validate the report behavior. Once we complete the verification, we will provide detailed clarification on the report criteria, data pulling logic, and any discrepancies observed.
+For the Weekly MF Escalation Report Non Hedge, the aging summary page update has already been completed and the updated report has been placed in the shared folder under the Mark folder.
+Regarding the “R&A Notes” field for Break Description, in the previous email it was mentioned to map a new column. However, we are unable to identify which table and column should be referred to for the R&A Notes mapping. Please clarify the source table/column so we can implement the same.
+Currently, the report logic has been implemented based on the Excel/MS SQL mapping document that was initially shared and converted into executable SQL. We are using that as the reference for report criteria.
+Once we receive the PROD sample data and complete validation, we will come back with a detailed update on all report questions.
+Thanks,
+Siva
