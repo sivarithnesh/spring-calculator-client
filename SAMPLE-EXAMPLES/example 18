@@ -1,0 +1,366 @@
+WITH tbl_MasterPositionBreaks AS
+(
+    SELECT
+        B.AGENT_CODE AS AGENT_CODE,
+        B.LOCAL_ACC_NO AS LOCAL_ACC_NO,
+
+        CASE
+            WHEN STOCK_CODE IS NULL THEN 'N/A'
+            ELSE STOCK_CODE
+        END AS ISIN,
+
+        I.STRING_27 AS SecID,
+        I.STRING_28 AS SecName,
+
+        CASE
+            WHEN LS_TYPE = 9030
+            THEN AMOUNT_6
+            ELSE 0
+        END AS BbhAmount,
+
+        CASE
+            WHEN LS_TYPE = 9030
+            THEN 0
+            ELSE AMOUNT_6
+        END AS NsccAmount,
+
+        I.STMT_DATE AS Statement,
+
+        CASE
+            WHEN STRING_14 <> ' '
+            THEN STRING_14
+            ELSE
+                CASE
+                    WHEN SUBSTR(LOCAL_ACC_NO, 8, 1) = '-'
+                    THEN SUBSTR(LOCAL_ACC_NO, 1, 7)
+                    ELSE 'OMNIBUS'
+                END
+        END AS BbhAcctNum,
+
+        I.STRING_21 AS BBHExtAcctNum,
+        I.STRING_21 AS NsccExtAcctNum,
+
+        I.AMOUNT_5 AS Price,
+
+        'System Entry Date = ' || SYS_ENTRY_DATE AS HitsTlm,
+
+        CASE
+            WHEN B.AGENT_CODE LIKE '%MUTUAL FUNDS - NSCC TRANS POS%'
+                THEN 'NSCC'
+            WHEN B.AGENT_CODE LIKE '%MUTUAL FUNDS - MONTHLY POSITIONS%'
+                THEN 'MONTHLY'
+            WHEN B.AGENT_CODE LIKE '%MUTUAL FUNDS - SWIFT DAILY POSITIONS%'
+                THEN 'SWIFTDAILY'
+            WHEN B.AGENT_CODE LIKE '%MUTUAL FUNDS - HEDGE%'
+                THEN 'HEDGE'
+        END AS SOURCEDB,
+
+        I.STRING_29 AS BbhAcctName,
+        I.STRING_13 AS Freq
+
+    FROM BANK B
+    INNER JOIN ITEM I
+        ON B.CORR_ACC_NO = I.CORR_ACC_NO
+
+    LEFT JOIN STCK
+        ON I.STOCK_ID = STCK.STOCK_ID
+
+    WHERE B.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+      AND I.LS_TYPE IN (9030, 9099)
+      AND I.FLAG_2 = 0
+),
+
+tbl_BreakDetails_MonthlyAndHedge AS
+(
+    SELECT
+        B.LOCAL_ACC_NO AS LOCAL_ACC_NO,
+
+        CASE
+            WHEN STOCK_CODE IS NULL THEN 'N/A'
+            ELSE STOCK_CODE
+        END AS ISIN,
+
+        CASE
+            WHEN STRING_14 <> ' '
+            THEN STRING_14
+            ELSE
+                CASE
+                    WHEN SUBSTR(LOCAL_ACC_NO, 8, 1) = '-'
+                    THEN SUBSTR(LOCAL_ACC_NO, 1, 7)
+                    ELSE 'OMNIBUS'
+                END
+        END AS BbhAcctNum,
+
+        I.STMT_DATE AS Statement,
+
+        CASE
+            WHEN LS_TYPE IN (9106, 9129)
+            THEN AMOUNT_6 * -1
+            ELSE AMOUNT_6
+        END AS BreakQuantity,
+
+        TRUNC(SYS_ENTRY_DATE) AS BreakOpened,
+
+        I.ITEM_ID AS BreakDesc,
+        I.STRING_6 AS AuditTrail,
+
+        DCOD.CODE_NAME AS BreakType,
+
+        TLM_REF_REASON_CATEGORY.NAME AS ReasonCategory,
+        TLM_REF_REASON_CATEGORY.NAME AS Dept,
+
+        CASE
+            WHEN B.AGENT_CODE LIKE '%MUTUAL FUNDS - NSCC TRANS POS%'
+                THEN 'NSCC'
+            WHEN B.AGENT_CODE LIKE '%MUTUAL FUNDS - MONTHLY POSITIONS%'
+                THEN 'MONTHLY'
+            WHEN B.AGENT_CODE LIKE '%MUTUAL FUNDS - SWIFT DAILY POSITIONS%'
+                THEN 'SWIFTDAILY'
+            WHEN B.AGENT_CODE LIKE '%MUTUAL FUNDS - HEDGE%'
+                THEN 'HEDGE'
+        END AS SourceDB,
+
+        TLM_REF_REASON_TYPE.NAME AS ReasonType,
+
+        TLM_BDR_NOTE.NOTE AS Comments,
+
+        I.ITEM_ID,
+
+        CASE
+            WHEN LS_TYPE IN (9105, 9106)
+            THEN REFERENCE
+            ELSE ''
+        END AS TAExtAcctNum,
+
+        CASE
+            WHEN LS_TYPE IN (9128, 9129)
+            THEN STRING_21
+            ELSE ''
+        END AS BbhExtAcctNum
+
+    FROM BANK B
+
+    INNER JOIN ITEM I
+        ON B.CORR_ACC_NO = I.CORR_ACC_NO
+
+    LEFT JOIN DCOD
+        ON I.BRAN_CODE = DCOD.CODEC
+
+    LEFT JOIN STCK
+        ON I.STOCK_ID = STCK.STOCK_ID
+
+    LEFT JOIN TLM_REF_REASON_TYPE
+        ON I.REASON_TYPE_ID =
+           TLM_REF_REASON_TYPE.REASON_TYPE_ID
+
+    LEFT JOIN TLM_REF_REASON_CATEGORY
+        ON TLM_REF_REASON_TYPE.REASON_CATEGORY_ID =
+           TLM_REF_REASON_CATEGORY.REASON_CATEGORY_ID
+
+    LEFT JOIN TLM_BDR_NOTE
+        ON I.NOTE_ID = TLM_BDR_NOTE.ID
+
+    WHERE
+    (
+           B.AGENT_CODE LIKE '%MUTUAL FUNDS - NSCC TRANS POS%'
+        OR B.AGENT_CODE LIKE '%MUTUAL FUNDS - MONTHLY POSITIONS%'
+        OR B.AGENT_CODE LIKE '%MUTUAL FUNDS - SWIFT DAILY POSITIONS%'
+        OR B.AGENT_CODE LIKE '%MUTUAL FUNDS - HEDGE%'
+    )
+    AND I.LS_TYPE NOT IN (9030, 9099)
+    AND I.FLAG_2 = 0
+),
+
+qry_TA_Names AS
+(
+    SELECT
+        I.STRING_27 AS BBHNum,
+        MIN(I.STRING_5) AS "TA Name"
+
+    FROM BANK B
+
+    INNER JOIN ITEM I
+        ON B.CORR_ACC_NO = I.CORR_ACC_NO
+
+    WHERE B.AGENT_CODE LIKE 'MUTUAL FUNDS%'
+      AND I.LS_TYPE = 9030
+      AND I.FLAG_2 = 0
+
+    GROUP BY I.STRING_27
+
+    HAVING MIN(I.STRING_5) NOT IN ('N', 'Y', ' ')
+),
+
+qry_NewMsgFeedData AS
+(
+    SELECT
+        TLMADM_MESSAGE_FEED.SUB_ACC_NO,
+        B.LOCAL_ACC_NO,
+
+        TLMADM_MESSAGE_FEED.DESCRIPTION AS "Statement Expected",
+        TLMADM_MESSAGE_FEED.BSLA AS "Contact #",
+        TLMADM_MESSAGE_FEED.BUS_CODE AS "Initial Method",
+        TLMADM_MESSAGE_FEED.BUS_OWNER AS "TA Email ID",
+
+        TLMADM_MESSAGE_FEED.STATUS
+
+    FROM BANK B
+
+    INNER JOIN TLMADM_MESSAGE_FEED
+        ON B.CORR_ACC_NO =
+           TLMADM_MESSAGE_FEED.CORR_ACC_NO
+
+    WHERE TLMADM_MESSAGE_FEED.DESCRIPTION <> ' '
+      AND TLMADM_MESSAGE_FEED.STATUS = 0
+      AND B.AGENT_CODE LIKE 'MUTUAL FUNDS%'
+),
+
+qry_Escal_Details_HedgeSetup AS
+(
+    SELECT
+        tbl_BreakDetails_MonthlyAndHedge.Dept,
+        tbl_BreakDetails_MonthlyAndHedge.BreakType,
+
+        tbl_MasterPositionBreaks.Statement AS ParentBreakDate,
+        tbl_MasterPositionBreaks.Freq AS StatementDate,
+
+        TRUNC(SYSDATE)
+            - TRUNC(tbl_MasterPositionBreaks.Statement)
+            AS ParentAge,
+
+        TRUNC(SYSDATE)
+            - TRUNC(tbl_BreakDetails_MonthlyAndHedge.BreakOpened)
+            AS DiscvAge,
+
+        tbl_MasterPositionBreaks.SecID AS BBHNum,
+        tbl_MasterPositionBreaks.ISIN AS ISIN,
+
+        tbl_MasterPositionBreaks.SecName
+            AS "Asset Description",
+
+        tbl_MasterPositionBreaks.BbhAcctNum,
+        tbl_MasterPositionBreaks.BbhAcctName,
+
+        TO_CHAR(
+            tbl_MasterPositionBreaks.BbhAmount,
+            '999,999,999,990.000000'
+        ) AS "BBH Amount",
+
+        TO_CHAR(
+            tbl_MasterPositionBreaks.NsccAmount,
+            '999,999,999,990.000000'
+        ) AS "Fund Amount",
+
+        TO_CHAR(
+            ABS(
+                tbl_MasterPositionBreaks.BbhAmount
+                -
+                tbl_MasterPositionBreaks.NsccAmount
+            ),
+            '999,999,999,990.000000'
+        ) AS MasterBreak,
+
+        tbl_BreakDetails_MonthlyAndHedge.BreakQuantity
+            AS ChildBreak,
+
+        TO_CHAR(
+            tbl_BreakDetails_MonthlyAndHedge.BreakQuantity
+            *
+            tbl_MasterPositionBreaks.Price,
+            'L999,999,999,990.00'
+        ) AS Exposure,
+
+        tbl_BreakDetails_MonthlyAndHedge.BreakDesc
+            AS "Break Description",
+
+        tbl_BreakDetails_MonthlyAndHedge.Comments
+            AS ParentComments,
+
+        tbl_BreakDetails_MonthlyAndHedge.SourceDB,
+
+        tbl_MasterPositionBreaks.Freq,
+
+        tbl_MasterPositionBreaks.BBHExtAcctNum,
+
+        tbl_MasterPositionBreaks.NsccExtAcctNum
+            AS FundExtAcctNum,
+
+        qry_TA_Names."TA Name",
+
+        tbl_MasterPositionBreaks.BbhAcctNum
+            || '-'
+            || tbl_MasterPositionBreaks.SecID
+            AS SUB_ACC_NO
+
+    FROM qry_TA_Names
+
+    RIGHT JOIN
+    (
+        tbl_MasterPositionBreaks
+
+        INNER JOIN tbl_BreakDetails_MonthlyAndHedge
+            ON tbl_MasterPositionBreaks.LOCAL_ACC_NO =
+               tbl_BreakDetails_MonthlyAndHedge.LOCAL_ACC_NO
+
+           AND tbl_MasterPositionBreaks.BbhAcctNum =
+               tbl_BreakDetails_MonthlyAndHedge.BbhAcctNum
+
+           AND tbl_MasterPositionBreaks.Statement =
+               tbl_BreakDetails_MonthlyAndHedge.Statement
+
+           AND tbl_MasterPositionBreaks.ISIN =
+               tbl_BreakDetails_MonthlyAndHedge.ISIN
+    )
+        ON qry_TA_Names.BBHNum =
+           tbl_MasterPositionBreaks.SecID
+
+    WHERE
+        (
+            TRUNC(SYSDATE)
+            -
+            TRUNC(tbl_BreakDetails_MonthlyAndHedge.BreakOpened)
+        ) >= 30
+
+    AND tbl_BreakDetails_MonthlyAndHedge.SourceDB = 'HEDGE'
+
+    AND tbl_BreakDetails_MonthlyAndHedge.ReasonType <> 'Resolved'
+)
+
+SELECT
+    qry_Escal_Details_HedgeSetup.Dept,
+    qry_Escal_Details_HedgeSetup.BreakType,
+    qry_Escal_Details_HedgeSetup.ParentBreakDate,
+    qry_Escal_Details_HedgeSetup.StatementDate,
+    qry_Escal_Details_HedgeSetup.ParentAge,
+    qry_Escal_Details_HedgeSetup.DiscvAge,
+    qry_Escal_Details_HedgeSetup.BBHNum,
+    qry_Escal_Details_HedgeSetup.ISIN,
+    qry_Escal_Details_HedgeSetup."Asset Description",
+    qry_Escal_Details_HedgeSetup.BbhAcctNum,
+    qry_Escal_Details_HedgeSetup.BbhAcctName,
+    qry_Escal_Details_HedgeSetup."BBH Amount",
+    qry_Escal_Details_HedgeSetup."Fund Amount",
+    qry_Escal_Details_HedgeSetup.MasterBreak,
+    qry_Escal_Details_HedgeSetup.ChildBreak,
+    qry_Escal_Details_HedgeSetup.Exposure,
+    qry_Escal_Details_HedgeSetup."Break Description",
+    qry_Escal_Details_HedgeSetup.ParentComments,
+    qry_Escal_Details_HedgeSetup.SourceDB,
+    qry_Escal_Details_HedgeSetup.Freq,
+    qry_Escal_Details_HedgeSetup.BBHExtAcctNum,
+    qry_Escal_Details_HedgeSetup.FundExtAcctNum,
+    qry_Escal_Details_HedgeSetup."TA Name",
+    qry_NewMsgFeedData."Statement Expected",
+    qry_NewMsgFeedData."Contact #",
+    qry_NewMsgFeedData."Initial Method",
+    qry_NewMsgFeedData."TA Email ID"
+
+FROM qry_Escal_Details_HedgeSetup
+
+LEFT JOIN qry_NewMsgFeedData
+    ON qry_Escal_Details_HedgeSetup.SUB_ACC_NO =
+       qry_NewMsgFeedData.SUB_ACC_NO
+
+ORDER BY
+    qry_Escal_Details_HedgeSetup.Dept,
+    qry_Escal_Details_HedgeSetup.BreakType;
