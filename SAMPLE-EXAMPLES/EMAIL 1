@@ -1,14 +1,15 @@
-Hi Mark,
-I am attaching the five SQL scripts that we need to test against PROD data. Once we receive the PROD sample data/output for these queries, we will verify the results in our local environment and compare whether the changes are working as expected.
-Regarding the report clarifications raised for:
-SEB MF Position Reporting
-SEB Researching Account Disc
-SEB MF Fractional Breaks
-Weekly MF Escalation Report Non Hedge
-We first need the PROD data/output to compare and validate the report behavior. Once we complete the verification, we will provide detailed clarification on the report criteria, data pulling logic, and any discrepancies observed.
-For the Weekly MF Escalation Report Non Hedge, the aging summary page update has already been completed and the updated report has been placed in the shared folder under the Mark folder.
-Regarding the “R&A Notes” field for Break Description, in the previous email it was mentioned to map a new column. However, we are unable to identify which table and column should be referred to for the R&A Notes mapping. Please clarify the source table/column so we can implement the same.
-Currently, the report logic has been implemented based on the Excel/MS SQL mapping document that was initially shared and converted into executable SQL. We are using that as the reference for report criteria.
-Once we receive the PROD sample data and complete validation, we will come back with a detailed update on all report questions.
-Thanks,
-Siva
+Goal Description
+
+Drive continuous service improvement and customer value creation by contributing to report design, SQL migration, delivery optimization, defect resolution, and process improvements. Proactively support successful customer delivery through technical ownership, client interaction, team coordination, and implementation of value-added technical solutions.
+
+Success Criteria
+
+• Prepare and contribute to monthly plans for Customer Value Propositions (CVA) for upcoming quarters.
+• Deliver minimum 2 value propositions/CVA improvements per quarter through technical optimization, process improvement, automation, or quality enhancements.
+• Ensure successful report design, development, migration, testing, and production deployment with minimal defects.
+• Support on-time delivery, issue resolution, and proactive communication with stakeholders and clients.
+• Improve delivery efficiency through technical guidance, reusable solutions, and process improvements.
+
+Comments
+
+Successfully contributed to customer value addition through BIRT report design, development, execution, and unit testing activities. Played a key role in MS SQL to Oracle SQL conversion and migration activities to improve compatibility and delivery effectiveness. Actively participated in client discussions, status meetings, technical clarifications, and prompt issue resolution. Coordinated with team members to track deliverables and ensure successful report installation, production deployment, and defect-free delivery. Supported QC defect fixes, production data validation, and proactive communication to ensure customer satisfaction and on-time delivery.
