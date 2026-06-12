@@ -1,15 +1,131 @@
+
+1) CVA / Continuous Service Improvement Plan / Value Propositions (25%)
 Goal Description
 
-Drive continuous service improvement and customer value creation by contributing to report design, SQL migration, delivery optimization, defect resolution, and process improvements. Proactively support successful customer delivery through technical ownership, client interaction, team coordination, and implementation of value-added technical solutions.
+Drive continuous service improvement and customer value creation through reusable technical solutions, process optimization, performance enhancement, and delivery excellence. Contribute to customer success by implementing reusable frameworks, query optimization, standardization, automation, and proactive stakeholder engagement to improve report quality, maintainability, and delivery efficiency.
 
 Success Criteria
 
-• Prepare and contribute to monthly plans for Customer Value Propositions (CVA) for upcoming quarters.
-• Deliver minimum 2 value propositions/CVA improvements per quarter through technical optimization, process improvement, automation, or quality enhancements.
-• Ensure successful report design, development, migration, testing, and production deployment with minimal defects.
-• Support on-time delivery, issue resolution, and proactive communication with stakeholders and clients.
-• Improve delivery efficiency through technical guidance, reusable solutions, and process improvements.
+• Prepare and contribute to monthly Customer Value Proposition (CVA) plans for upcoming quarters.
+• Deliver minimum 2 value propositions/CVA improvements per quarter through technical optimization, reusable solutions, process improvements, or automation.
+• Improve report performance, maintainability, and delivery quality through reusable frameworks and optimized implementations.
+• Ensure successful design, development, testing, and production deployment with minimal defects and rework.
+• Support proactive client communication, on-time delivery, and stakeholder collaboration.
 
 Comments
 
-Successfully contributed to customer value addition through BIRT report design, development, execution, and unit testing activities. Played a key role in MS SQL to Oracle SQL conversion and migration activities to improve compatibility and delivery effectiveness. Actively participated in client discussions, status meetings, technical clarifications, and prompt issue resolution. Coordinated with team members to track deliverables and ensure successful report installation, production deployment, and defect-free delivery. Supported QC defect fixes, production data validation, and proactive communication to ensure customer satisfaction and on-time delivery.
+Successfully contributed to customer value additions by designing and implementing reusable technical components across reports, including common reusable CSS frameworks for headers, tables, rows, columns, and report styling to improve standardization and reduce development effort.
+
+Created reusable SQL scripts, reusable parameters, and common templates to improve maintainability and accelerate report development. Performed SQL query optimization using techniques such as CTE-based query structuring, query tuning, and optimized implementations to improve report execution performance and reduce processing time.
+
+Actively contributed to BIRT report design, development, execution, unit testing, and production validation. Successfully supported MS SQL to Oracle SQL conversion and migration activities to improve compatibility and delivery effectiveness.
+
+Proactively interacted with clients through status meetings, requirement clarifications, technical discussions, and prompt communication to ensure smooth execution and customer satisfaction. Took leadership responsibility in coordinating with team members, tracking deliverables, resolving blockers, addressing QC defects, and ensuring successful on-time report installation and production delivery.
+
+
+
+=========================
+
+2) Employee Retention (10%)
+
+Goal Description
+
+Promote a collaborative and growth-oriented work environment by mentoring team members, sharing technical and functional knowledge, resolving blockers, and supporting continuous learning to improve team productivity, engagement, and retention.
+
+Success Criteria
+
+• Provide technical and functional mentoring to junior team members whenever required.
+• Support peer reviews, code reviews, and technical guidance to improve quality and team capability.
+• Enable knowledge sharing in BIRT reports, SQL optimization, Oracle query conversion, migration activities, testing, and troubleshooting.
+• Collaborate effectively across teams to resolve blockers and improve delivery effectiveness.
+• Contribute positively to employee engagement, team productivity, and project success.
+
+Comments
+
+Actively mentored junior team members and provided technical guidance in report development, SQL optimization, Oracle query conversion, and migration activities from MS SQL to Oracle SQL. Shared both technical and functional knowledge to improve team understanding and delivery effectiveness.
+
+Participated in code reviews, peer reviews, technical discussions, and issue resolution to ensure delivery quality and knowledge sharing across the team. Supported team members during critical delivery phases and proactively helped resolve blockers to improve collaboration and team productivity.
+
+
+
+=======================
+
+
+
+3) AI Implementation – Minimum 1 (10%)
+
+Goal Description
+
+Enhance technical capabilities and improve software delivery efficiency through continuous learning, experimentation, and adoption of Artificial Intelligence (AI), Generative AI, Machine Learning, and automation technologies. Contribute to innovation by exploring practical AI-based solutions and proof-of-concepts aligned with business and future customer needs.
+
+Success Criteria
+
+• Implement at least one AI-based improvement, proof-of-concept, automation, or productivity enhancement in software development lifecycle activities.
+• Improve efficiency in technical analysis, coding, testing, troubleshooting, documentation, or development activities using AI-assisted approaches.
+• Complete AI learning initiatives, internal trainings, certifications, and upskilling programs relevant to organizational goals.
+• Explore and demonstrate practical AI use cases for future project implementation and innovation opportunities.
+• Continuously upgrade technical knowledge in emerging technologies and modern architectures.
+
+Comments
+
+Actively involved in AI learning, experimentation, and implementation activities to strengthen technical capabilities and improve productivity. Successfully completed internal AI learning journeys, Generative AI training programs, and participated in multiple AI enablement initiatives including Hexa/Hexer City learning programs and Udemy-based AI courses.
+
+Independently explored and developed proof-of-concept solutions including chatbot implementation using existing AI models and experimentation with speech-to-text, text-to-speech, and speech-to-speech AI capabilities using Hugging Face models.
+
+Continuously upgraded technical knowledge in Python, MCP, Large Language Models (LLM), Machine Learning, Deep Learning, and Generative AI technologies to identify future opportunities for process improvement, automation, and business value creation. Applied AI-assisted approaches in technical analysis, troubleshooting, learning, and productivity improvement activities.
+
+
+
+======================
+
+
+
+4) Quality of Delivery – PHI / Internal Audits / Timesheet Approvals / Inter Audits (10%)
+
+Goal Description
+
+Ensure high-quality and compliant project delivery through defect prevention, production validation, audit readiness, process adherence, and timely completion of assigned deliverables while maintaining delivery excellence.
+
+Success Criteria
+
+• Deliver assigned work with minimal defects and rework.
+• Ensure successful report testing, validation, and production implementation.
+• Support audit readiness, compliance requirements, and process adherence.
+• Maintain timely completion of deliverables and ensure quality standards are consistently met.
+• Support prompt issue resolution and continuous quality improvement.
+
+Comments
+
+Maintained high delivery quality through BIRT report validation, unit testing, production data testing, SQL verification, and defect resolution activities. Ensured successful installation and deployment support with proactive troubleshooting and quality checks. Addressed QC defects promptly and contributed to successful production delivery with minimal rework. Maintained effective coordination with stakeholders and team members to ensure timely and quality deliverables.
+
+
+
+============
+
+
+
+5) Gross Margin / Portfolio Utilization (10%)
+
+
+
+Goal Description
+
+Contribute to project profitability and portfolio utilization through effective effort management, timely delivery, technical ownership, and maximization of billable contribution while ensuring quality outcomes.
+
+Success Criteria
+
+• Maintain high utilization through consistent contribution to project activities.
+• Support estimation, planning, and timely execution of assigned work.
+• Ensure on-time completion of deliverables with expected quality standards.
+• Contribute to delivery efficiency and minimize delays through proactive ownership and issue resolution.
+
+Comments
+
+Actively contributed to project delivery through report development, SQL migration, production support, testing, defect fixing, and technical troubleshooting. Participated in effort estimation, planning discussions, and work tracking to ensure effective utilization and timely completion of deliverables. Took ownership during critical phases to support successful production implementation and delivery commitments.
+
+
+
+================
+
+
+
