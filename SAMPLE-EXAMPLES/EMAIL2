@@ -1,27 +1,12 @@
 Hi Mark,
 
-Thanks to Ankit for executing the queries in the Production DB and sharing the output data.
+I have implemented the RA Node field changes for the below three reports.
 
-I have reviewed the query results (Excel files), and everything looks fine from our end.
+Please find the updated report design files attached to this email.
 
-We have completed the required changes and placed the updated report files (4 files) in the shared folder. Kindly deploy these files into SmartStream.
+Additionally, I have created a separate folder named “RA Node Field” under the shared folder and placed all three updated files there as well for your reference.
 
-Additionally, regarding the RNA Nodes field mapping for **Break Description**, could you please provide the relevant **table name and column name** so that we can map it accordingly?
-
-Currently, the functionality for Break Description differs across reports:
-
-* In one report, we display the **Break Description** from the **Audit Trail**.
-* In another report, if Audit Trail data is unavailable, we display the **Reason Type** instead.
-
-If the requirement is to map the **RNA Nodes field** consistently, please share the appropriate table/column details.
-
-Also, the remaining issues have been addressed:
-
-* Non-GIT setup related changes have been completed.
-* Aging report changes have been implemented.
-* All updated report files have been placed in the shared folder.
-
-Please review and let us know if there are any issues or concerns.
+Please use the files from either the email attachment or the shared folder based on your convenience. If you have any concerns or questions, please let me know.
 
 Thanks,
-[Your Name]
+Siva
