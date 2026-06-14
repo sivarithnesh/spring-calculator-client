@@ -1,0 +1,214 @@
+(SELECT
+    B.AGENT_CODE AS AGENT_CODE,
+    B.LOCAL_ACC_NO AS LOCAL_ACC_NO,
+
+    CASE
+        WHEN STOCK_CODE IS NULL THEN 'N/A'
+        ELSE STOCK_CODE
+    END AS ISIN,
+
+    I.STRING_27 AS SecID ,
+    I.STRING_28 AS SecName,
+
+    CASE
+        WHEN LS_TYPE = 9030
+        THEN AMOUNT_6
+        ELSE 0
+    END AS BbhAmount,
+
+    CASE
+        WHEN LS_TYPE = 9030
+        THEN 0
+        ELSE AMOUNT_6
+    END AS NsccAmount,
+	
+	
+WITH qry_NewMsgFeedData_Hedge_Only AS
+(
+    SELECT DISTINCT
+        B.LOCAL_ACC_NO,
+        MF.BSLA AS [Contact #],
+        MF.BUS_CODE AS [Initial Method],
+        MF.BUS_OWNER AS [TA Email ID]
+    FROM TLMADM_BANK B
+    INNER JOIN TLMADM_MESSAGE_FEED MF
+        ON B.CORR_ACC_NO = MF.CORR_ACC_NO
+    WHERE MF.STATUS = 0
+        AND B.AGENT_CODE LIKE 'MUTUAL FUNDS - HEDGE%'
+        AND MF.BSLA IS NOT NULL
+),
+
+qry_NewMsgFeedData_Monthly_Only AS
+(
+    SELECT DISTINCT
+        B.LOCAL_ACC_NO,
+        MF.BSLA AS [Contact #],
+        MF.BUS_CODE AS [Initial Method],
+        MF.BUS_OWNER AS [TA Email ID]
+    FROM TLMADM_BANK B
+    INNER JOIN TLMADM_MESSAGE_FEED MF
+        ON B.CORR_ACC_NO = MF.CORR_ACC_NO
+    WHERE MF.STATUS = 0
+        AND B.AGENT_CODE = 'MUTUAL FUNDS - MONTHLY POSITIONS'
+        AND MF.BSLA IS NOT NULL
+),
+
+qry_NewMsgFeedData_NSCC_Only AS
+(
+    SELECT DISTINCT
+        B.LOCAL_ACC_NO,
+        MF.BSLA AS [Contact #],
+        MF.BUS_CODE AS [Initial Method],
+        MF.BUS_OWNER AS [TA Email ID]
+    FROM TLMADM_BANK B
+    INNER JOIN TLMADM_MESSAGE_FEED MF
+        ON B.CORR_ACC_NO = MF.CORR_ACC_NO
+    WHERE MF.STATUS = 0
+        AND B.AGENT_CODE = 'MUTUAL FUNDS - NSCC TRANS POS'
+        AND MF.BSLA IS NOT NULL
+),
+
+qry_NewMsgFeedData_SwiftDaily_Only AS
+(
+    SELECT
+        MF.SUB_ACC_NO AS SUB_ACC_NO,
+        B.LOCAL_ACC_NO,
+        MF.DESCRIPTION AS [Statement Expected],
+        MF.BSLA AS [Contact #],
+        MF.BUS_CODE AS [Initial Method],
+        MF.BUS_OWNER AS [TA Email ID]
+    FROM TLMADM_BANK B
+    INNER JOIN TLMADM_MESSAGE_FEED MF
+        ON B.CORR_ACC_NO = MF.CORR_ACC_NO
+    WHERE MF.STATUS = 0
+        AND B.AGENT_CODE LIKE 'MUTUAL FUNDS - SWIFT DAILY POSITIONS%'
+        AND MF.BSLA IS NOT NULL
+)
+
+SELECT
+    'Hedge' AS MsgFeedType,
+    LOCAL_ACC_NO,
+    COUNT(LOCAL_ACC_NO) AS CountOfLOCAL_ACC_NO,
+    MIN([Contact #]) AS FirstOfContact,
+    MAX([Contact #]) AS LastOfContact,
+    MIN([Initial Method]) AS FirstOfInitialMethod,
+    MAX([Initial Method]) AS LastOfInitialMethod,
+    MIN([TA Email ID]) AS FirstOfTAEmailID,
+    MAX([TA Email ID]) AS LastOfTAEmailID
+FROM qry_NewMsgFeedData_Hedge_Only
+GROUP BY LOCAL_ACC_NO
+HAVING COUNT(LOCAL_ACC_NO) > 1
+
+UNION ALL
+
+SELECT
+    'Monthly' AS MsgFeedType,
+    LOCAL_ACC_NO,
+    COUNT(LOCAL_ACC_NO) AS CountOfLOCAL_ACC_NO,
+    MIN([Contact #]) AS FirstOfContact,
+    MAX([Contact #]) AS LastOfContact,
+    MIN([Initial Method]) AS FirstOfInitialMethod,
+    MAX([Initial Method]) AS LastOfInitialMethod,
+    MIN([TA Email ID]) AS FirstOfTAEmailID,
+    MAX([TA Email ID]) AS LastOfTAEmailID
+FROM qry_NewMsgFeedData_Monthly_Only
+GROUP BY LOCAL_ACC_NO
+HAVING COUNT(LOCAL_ACC_NO) > 1
+
+UNION ALL
+
+SELECT
+    'Swift' AS MsgFeedType,
+    LOCAL_ACC_NO,
+    COUNT(LOCAL_ACC_NO) AS CountOfLOCAL_ACC_NO,
+    MIN([Contact #]) AS FirstOfContact,
+    MAX([Contact #]) AS LastOfContact,
+    MIN([Initial Method]) AS FirstOfInitialMethod,
+    MAX([Initial Method]) AS LastOfInitialMethod,
+    MIN([TA Email ID]) AS FirstOfTAEmailID,
+    MAX([TA Email ID]) AS LastOfTAEmailID
+FROM qry_NewMsgFeedData_SwiftDaily_Only
+GROUP BY LOCAL_ACC_NO
+HAVING COUNT(LOCAL_ACC_NO) > 1
+
+UNION ALL
+
+SELECT
+    'NSCC' AS MsgFeedType,
+    LOCAL_ACC_NO,
+    COUNT(LOCAL_ACC_NO) AS CountOfLOCAL_ACC_NO,
+    MIN([Contact #]) AS FirstOfContact,
+    MAX([Contact #]) AS LastOfContact,
+    MIN([Initial Method]) AS FirstOfInitialMethod,
+    MAX([Initial Method]) AS LastOfInitialMethod,
+    MIN([TA Email ID]) AS FirstOfTAEmailID,
+    MAX([TA Email ID]) AS LastOfTAEmailID
+FROM qry_NewMsgFeedData_NSCC_Only
+GROUP BY LOCAL_ACC_NO
+HAVING COUNT(LOCAL_ACC_NO) > 1
+=============================================================================
+
+1) QRY_PRODUCTIVITY_CHILDBREAKS_PSUEDOS
+SELECT
+    TLMADM_BANK.AGENT_CODE AS SOURCE,
+    TLMADM_ITEM.LAST_ACTION_OWNER AS USERID
+FROM TLMADM_BANK
+INNER JOIN TLMADM_ITEM
+    ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+WHERE
+(
+    (
+        TLMADM_BANK.AGENT_CODE IN
+        (
+            'MUTUAL FUNDS - NSCC TRANS POS',
+            'MUTUAL FUNDS - MONTHLY POSITIONS'
+        )
+        OR TLMADM_BANK.AGENT_CODE LIKE 'MUTUAL FUNDS - SWIFT DAILY POSITIONS%'
+        OR TLMADM_BANK.AGENT_CODE LIKE 'MUTUAL FUNDS - HEDGE%'
+    )
+    AND TLMADM_ITEM.LS_TYPE NOT IN (9030, 9099)
+    AND TLMADM_ITEM.FLAG_2 = 0
+    AND TLMADM_ITEM.REASON_TYPE_ID <> 100000057
+)
+GROUP BY
+    TLMADM_BANK.AGENT_CODE,
+    TLMADM_ITEM.LAST_ACTION_OWNER;
+	
+=============================================================	
+2) QRY_PRODUCTIVITY_CHILDBREAKS_SEB
+SELECT
+    'SEB' AS SOURCEDB,
+    TLMADM_ITEM.LAST_ACTION_OWNER AS USERID
+FROM TLMADM_BANK
+INNER JOIN TLMADM_ITEM
+    ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+WHERE
+(
+    TLMADM_BANK.AGENT_CODE = 'MUTUAL FUNDS- SEB'
+    AND TLMADM_ITEM.LS_TYPE NOT IN (9030, 9099)
+    AND TLMADM_ITEM.FLAG_2 = 0
+    AND TLMADM_ITEM.REASON_TYPE_ID <> 100000057
+)
+GROUP BY
+    TLMADM_ITEM.LAST_ACTION_OWNER;
+
+==============================================================	
+3) qry_productivity_mfinputs
+SELECT
+    TLMADM_BANK.AGENT_CODE AS CATEGORY,
+    SUBSTR(STRING_24, 1, 7) AS INPUTBY
+FROM TLMADM_BANK
+INNER JOIN TLMADM_ITEM
+    ON TLMADM_BANK.CORR_ACC_NO = TLMADM_ITEM.CORR_ACC_NO
+WHERE
+(
+    SUBSTR(STRING_24, 1, 7) LIKE 'A0%'
+    AND TLMADM_BANK.AGENT_CODE LIKE 'MUTUAL FUNDS -%'
+    AND TLMADM_ITEM.LS_TYPE = 9099
+    AND TLMADM_ITEM.SYS_ENTRY_DATE
+        BETWEEN :START_DATE AND :END_DATE
+)
+GROUP BY
+    TLMADM_BANK.AGENT_CODE,
+    SUBSTR(STRING_24, 1, 7);
+	
