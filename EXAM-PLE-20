@@ -27,9 +27,9 @@ WITH qry_NewMsgFeedData_Hedge_Only AS
 (
     SELECT DISTINCT
         B.LOCAL_ACC_NO,
-        MF.BSLA AS [Contact #],
-        MF.BUS_CODE AS [Initial Method],
-        MF.BUS_OWNER AS [TA Email ID]
+        MF.BSLA AS "Contact #",
+        MF.BUS_CODE AS "Initial Method",
+        MF.BUS_OWNER AS "TA Email ID"
     FROM TLMADM_BANK B
     INNER JOIN TLMADM_MESSAGE_FEED MF
         ON B.CORR_ACC_NO = MF.CORR_ACC_NO
@@ -42,9 +42,9 @@ qry_NewMsgFeedData_Monthly_Only AS
 (
     SELECT DISTINCT
         B.LOCAL_ACC_NO,
-        MF.BSLA AS [Contact #],
-        MF.BUS_CODE AS [Initial Method],
-        MF.BUS_OWNER AS [TA Email ID]
+        MF.BSLA AS "Contact #",
+        MF.BUS_CODE AS "Initial Method",
+        MF.BUS_OWNER AS "TA Email ID"
     FROM TLMADM_BANK B
     INNER JOIN TLMADM_MESSAGE_FEED MF
         ON B.CORR_ACC_NO = MF.CORR_ACC_NO
@@ -57,9 +57,9 @@ qry_NewMsgFeedData_NSCC_Only AS
 (
     SELECT DISTINCT
         B.LOCAL_ACC_NO,
-        MF.BSLA AS [Contact #],
-        MF.BUS_CODE AS [Initial Method],
-        MF.BUS_OWNER AS [TA Email ID]
+        MF.BSLA AS "Contact #",
+        MF.BUS_CODE AS "Initial Method",
+        MF.BUS_OWNER AS "TA Email ID"
     FROM TLMADM_BANK B
     INNER JOIN TLMADM_MESSAGE_FEED MF
         ON B.CORR_ACC_NO = MF.CORR_ACC_NO
@@ -73,10 +73,10 @@ qry_NewMsgFeedData_SwiftDaily_Only AS
     SELECT
         MF.SUB_ACC_NO AS SUB_ACC_NO,
         B.LOCAL_ACC_NO,
-        MF.DESCRIPTION AS [Statement Expected],
-        MF.BSLA AS [Contact #],
-        MF.BUS_CODE AS [Initial Method],
-        MF.BUS_OWNER AS [TA Email ID]
+        MF.DESCRIPTION AS "Statement Expected",
+        MF.BSLA AS "Contact #",
+        MF.BUS_CODE AS "Initial Method",
+        MF.BUS_OWNER AS "TA Email ID"
     FROM TLMADM_BANK B
     INNER JOIN TLMADM_MESSAGE_FEED MF
         ON B.CORR_ACC_NO = MF.CORR_ACC_NO
@@ -89,12 +89,12 @@ SELECT
     'Hedge' AS MsgFeedType,
     LOCAL_ACC_NO,
     COUNT(LOCAL_ACC_NO) AS CountOfLOCAL_ACC_NO,
-    MIN([Contact #]) AS FirstOfContact,
-    MAX([Contact #]) AS LastOfContact,
-    MIN([Initial Method]) AS FirstOfInitialMethod,
-    MAX([Initial Method]) AS LastOfInitialMethod,
-    MIN([TA Email ID]) AS FirstOfTAEmailID,
-    MAX([TA Email ID]) AS LastOfTAEmailID
+    MIN("Contact #") AS FirstOfContact,
+    MAX("Contact #") AS LastOfContact,
+    MIN("Initial Method") AS FirstOfInitialMethod,
+    MAX("Initial Method") AS LastOfInitialMethod,
+    MIN("TA Email ID") AS FirstOfTAEmailID,
+    MAX("TA Email ID") AS LastOfTAEmailID
 FROM qry_NewMsgFeedData_Hedge_Only
 GROUP BY LOCAL_ACC_NO
 HAVING COUNT(LOCAL_ACC_NO) > 1
@@ -105,12 +105,12 @@ SELECT
     'Monthly' AS MsgFeedType,
     LOCAL_ACC_NO,
     COUNT(LOCAL_ACC_NO) AS CountOfLOCAL_ACC_NO,
-    MIN([Contact #]) AS FirstOfContact,
-    MAX([Contact #]) AS LastOfContact,
-    MIN([Initial Method]) AS FirstOfInitialMethod,
-    MAX([Initial Method]) AS LastOfInitialMethod,
-    MIN([TA Email ID]) AS FirstOfTAEmailID,
-    MAX([TA Email ID]) AS LastOfTAEmailID
+    MIN("Contact #") AS FirstOfContact,
+    MAX("Contact #") AS LastOfContact,
+    MIN("Initial Method") AS FirstOfInitialMethod,
+    MAX("Initial Method") AS LastOfInitialMethod,
+    MIN("TA Email ID") AS FirstOfTAEmailID,
+    MAX("TA Email ID") AS LastOfTAEmailID
 FROM qry_NewMsgFeedData_Monthly_Only
 GROUP BY LOCAL_ACC_NO
 HAVING COUNT(LOCAL_ACC_NO) > 1
@@ -121,12 +121,12 @@ SELECT
     'Swift' AS MsgFeedType,
     LOCAL_ACC_NO,
     COUNT(LOCAL_ACC_NO) AS CountOfLOCAL_ACC_NO,
-    MIN([Contact #]) AS FirstOfContact,
-    MAX([Contact #]) AS LastOfContact,
-    MIN([Initial Method]) AS FirstOfInitialMethod,
-    MAX([Initial Method]) AS LastOfInitialMethod,
-    MIN([TA Email ID]) AS FirstOfTAEmailID,
-    MAX([TA Email ID]) AS LastOfTAEmailID
+    MIN("Contact #") AS FirstOfContact,
+    MAX("Contact #") AS LastOfContact,
+    MIN("Initial Method") AS FirstOfInitialMethod,
+    MAX("Initial Method") AS LastOfInitialMethod,
+    MIN("TA Email ID") AS FirstOfTAEmailID,
+    MAX("TA Email ID") AS LastOfTAEmailID
 FROM qry_NewMsgFeedData_SwiftDaily_Only
 GROUP BY LOCAL_ACC_NO
 HAVING COUNT(LOCAL_ACC_NO) > 1
@@ -137,15 +137,15 @@ SELECT
     'NSCC' AS MsgFeedType,
     LOCAL_ACC_NO,
     COUNT(LOCAL_ACC_NO) AS CountOfLOCAL_ACC_NO,
-    MIN([Contact #]) AS FirstOfContact,
-    MAX([Contact #]) AS LastOfContact,
-    MIN([Initial Method]) AS FirstOfInitialMethod,
-    MAX([Initial Method]) AS LastOfInitialMethod,
-    MIN([TA Email ID]) AS FirstOfTAEmailID,
-    MAX([TA Email ID]) AS LastOfTAEmailID
+    MIN("Contact #") AS FirstOfContact,
+    MAX("Contact #") AS LastOfContact,
+    MIN("Initial Method") AS FirstOfInitialMethod,
+    MAX("Initial Method") AS LastOfInitialMethod,
+    MIN("TA Email ID") AS FirstOfTAEmailID,
+    MAX("TA Email ID") AS LastOfTAEmailID
 FROM qry_NewMsgFeedData_NSCC_Only
 GROUP BY LOCAL_ACC_NO
-HAVING COUNT(LOCAL_ACC_NO) > 1
+HAVING COUNT(LOCAL_ACC_NO) > 1;
 =============================================================================
 
 1) QRY_PRODUCTIVITY_CHILDBREAKS_PSUEDOS
