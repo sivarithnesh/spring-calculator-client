@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Mutual Fund Reports Development Status Update</title>
+<style>
+body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; }
+h2 { color: #000; }
+table { border-collapse: collapse; width: 100%; margin-top: 10px; margin-bottom: 15px; }
+th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+th { font-weight: bold; }
+ul { margin-top: 5px; }
+code { background-color: #f4f4f4; padding: 2px 4px; }
+</style>
+</head>
+<body>
+
+<p>Hi Mark,</p>
+
+<p>Please find below the status update on the Mutual Fund reports development.</p>
+
+<h2>1. New Mutual Fund Reports – Development Completed</h2>
+
+<p>The below new Mutual Fund reports have been completed from the development side, cross-checked, and report files have been shared.</p>
+
+<table>
+<tr>
+<th>Report No</th>
+<th>Section</th>
+<th>Report Name</th>
+<th>No. of Tabs</th>
+<th>Assigned To</th>
+<th>Status</th>
+</tr>
+<tr>
+<td>33</td>
+<td>Mutual Fund</td>
+<td>Productivity</td>
+<td>1</td>
+<td>Siva</td>
+<td>Dev Completed</td>
+</tr>
+<tr>
+<td>34</td>
+<td>Mutual Fund</td>
+<td>Productivity Breaks</td>
+<td>2</td>
+<td>Siva</td>
+<td>Dev Completed</td>
+</tr>
+<tr>
+<td>36</td>
+<td>Mutual Fund</td>
+<td>Dupes in MsgFeed</td>
+<td>1</td>
+<td>Siva</td>
+<td>Dev Completed</td>
+</tr>
+</table>
+
+<p>The report files for the above developments have been placed in the shared folder path below:</p>
+
+<p><code>\\njfile02\S-SRD\CJ2M350\BIRT Designer\Hexaware Deliveries\Siva\RA Node Field</code></p>
+
+<p>Since development and validation are completed from my side, could you please deploy these reports into SmartStream?</p>
+
+<h2>2. Escalation_Hedge_022426_Internal Only – Completed</h2>
+
+<p>For the <strong>Escalation_Hedge_022426_Internal Only</strong> report, the requested changes (<strong>ReasonType</strong> and <strong>BreakDescription</strong>) have been completed.</p>
+
+<p>Initially, after validating against the production data that Ankit had shared earlier (based on my request), I observed a mismatch between the production output and my local report output. Upon investigation, I identified mismatches in the <strong>ReasonType</strong> and <strong>BreakDescription</strong> references. I corrected the table/column references to align with the original source mapping.</p>
+
+<p>This report is now completed and the updated report file has also been included/shared.</p>
+
+<h2>3. DST Positions Quarterly Review_Q4 – Pending Dependency</h2>
+
+<p>During development of the <strong>DST Positions Quarterly Review_Q4</strong> report, I found missing dependencies related to the following objects:</p>
+
+<ul>
+<li><code>VisionPortStmts</code></li>
+<li><code>tbl_LedgerLookup</code></li>
+</ul>
+
+<p>These objects could not be traced in:</p>
+
+<ul>
+<li>The original Excel tracker containing MS SQL scripts</li>
+<li>QC schema tables/views</li>
+<li>RD schema tables/views</li>
+<li>Existing subqueries or related report objects</li>
+</ul>
+
+<p>Development is approximately <strong>30% completed</strong>, but the remaining implementation is currently blocked due to the missing object references.</p>
+
+<p>Could you please help identify where these tables/views/subqueries are located? Once I receive the correct references, I can complete the remaining development.</p>
+
+<h2>4. Extract FS &amp; NSCC Data Report – Pending Dependency</h2>
+
+<p>For the <strong>Extract FS &amp; NSCC Data Report</strong>, I found incomplete information in the original MS SQL script and Excel tracker.</p>
+
+<p>The below objects are currently missing/untraceable:</p>
+
+<ul>
+<li><code>tbl_FundSettleDailyStats</code></li>
+<li><code>tbl_NsccDailyStats</code></li>
+</ul>
+
+<p>These could not be found across:</p>
+
+<ul>
+<li>Excel tracker / original MS SQL script</li>
+<li>QC schema</li>
+<li>RD schema</li>
+<li>Existing tables/views/subqueries</li>
+</ul>
+
+<p>Additionally, the following information is missing for this report:</p>
+
+<ul>
+<li>Required report column names/output fields</li>
+<li>Whether this should be developed as one report or multiple tabs</li>
+<li>Source mapping for the report data elements</li>
+</ul>
+
+<p>Because of these missing dependencies, development for this report is currently pending.</p>
+
+<p>At the moment, the below two reports are pending from my side due to missing table/view/subquery references and incomplete source details:</p>
+
+<ol>
+<li>DST Positions Quarterly Review_Q4</li>
+<li>Extract FS &amp; NSCC Data Report</li>
+</ol>
+
+<p>Could you please help provide the missing references/details so that I can complete the remaining work?</p>
+
+<p>Thanks,<br>Siva</p>
+
+</body>
+</html>
