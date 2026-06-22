@@ -1,0 +1,63 @@
+<p>Hi Mark,</p>
+
+<p>We have completed the review and correction of the reports that were previously reported as returning blank results or incorrect data.</p>
+
+<h3><b>Root Cause Analysis</b></h3>
+
+<p>After detailed investigation, we identified that the primary issue was related to <b>case-sensitive string comparisons in Oracle SQL queries</b>.</p>
+
+<p>Several report datasets contained filter conditions where the values specified in the SQL did not exactly match the case of the corresponding values stored in the database.</p>
+
+<ul>
+<li>TP-Sett vs TP-SETT</li>
+<li>Monthly vs MONTHLY</li>
+<li>Resolved vs RESOLVED</li>
+</ul>
+
+<p>Since Oracle performs exact string comparisons, these mismatches caused the queries to return <b>zero records</b>, resulting in reports appearing blank even though valid data existed in the database.</p>
+
+<h3><b>Fix Applied</b></h3>
+
+<p>We reviewed and updated the affected datasets by standardizing string comparisons and implementing appropriate case handling using UPPER() functions where required.</p>
+
+<h3><b>Validation Performed</b></h3>
+
+<ul>
+<li>Reviewed all affected report datasets</li>
+<li>Corrected case-sensitive filter conditions</li>
+<li>Validated the updated SQL queries using production-cut data</li>
+<li>Verified that the reports are now returning expected results</li>
+<li>Reviewed associated tabs, sub-datasets, and supporting queries</li>
+</ul>
+
+<h3><b>Reports Updated</b></h3>
+
+<ol>
+<li>CA-Income_MFdsBreaks_Internal_Only.rptdesign</li>
+<li>CA-Mand_MFdsBreaks_Internal_Only.rptdesign</li>
+<li>CSG TP-D&amp;R_MFdsBreaks_Internal_Only.rptdesign</li>
+<li>CSG TP-Sett_MFdsBreaks_Internal_Only.rptdesign</li>
+<li>Escalation_Hedge_Internal_Only.rptdesign</li>
+<li>Escalation_NonHedge_Internal_Only.rptdesign</li>
+<li>MFAO_MFdsBreaks_Internal_Only.rptdesign</li>
+<li>MFS_MFdsBreaks_Internal_Only.rptdesign</li>
+<li>R&amp;A_MFdsBreaks_Internal_Only.rptdesign</li>
+<li>SMF_MFdsBreaks_Internal_Only.rptdesign</li>
+<li>TP-D&amp;R_MFdsBreaks_Internal_Only.rptdesign</li>
+<li>TP-Sett_MFdsBreaks_Internal_Only.rptdesign</li>
+<li>ZeroPos_InternalOnly.rptdesign</li>
+</ol>
+
+<h3><b>Deployment Request</b></h3>
+
+<p>The updated report files have been placed in the <b>Shared Folder → Deploy</b>.</p>
+
+<p>Please deploy these updated report definitions to the <b>SmartStream Production Environment</b>.</p>
+
+<h3><b>Remaining Reports</b></h3>
+
+<p>We are continuing to review the remaining reports and will share any additional fixes separately once completed.</p>
+
+<p>Thanks & Regards,<br>
+<b>Sivakumar</b><br>
+SmartStream Support Team</p>
