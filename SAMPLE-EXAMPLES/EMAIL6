@@ -1,0 +1,28 @@
+Hi Mark,
+
+I have completed the Oracle SQL conversion for Productivity Report #33.
+
+The dataset query is working correctly, and the Oracle SQL returns the expected data with the following fields:
+
+* Category
+* InputBy (User ID)
+* Entry Date
+* Record Count
+
+I validated the query by executing it in Oracle, and the output is attached. The SQL conversion itself appears to be complete.
+
+However, I noticed that the current output is returned as a grouped dataset (Category, InputBy, Entry Date, Record Count), whereas the existing production report displays the data as a Pivot/Crosstab with each Entry Date shown as a separate dynamic column.
+
+Based on the screenshots provided by the users, it appears that the original report uses a Crosstab/Pivot layout rather than a standard table.
+
+I am not familiar with configuring Crosstab reports in BIRT. Could you please help review whether the report design needs to be updated to use a Crosstab component so that the output matches the current production report?
+
+I have attached:
+
+* The Oracle SQL output generated from the converted query.
+* The screenshot of the current production report for comparison.
+
+Please let me know if the SQL requires any further changes, or if the remaining work is only on the BIRT Crosstab configuration.
+
+Thanks,
+Sivakumar
