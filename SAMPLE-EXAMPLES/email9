@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MFdsBreaks Investigation Summary Email</title>
+<style>
+body{font-family:Arial,sans-serif;line-height:1.6;margin:40px;color:#222}
+h2{color:#1f4e79}
+table{border-collapse:collapse;width:100%;margin:20px 0}
+th,td{border:1px solid #888;padding:8px}
+th{background:#d9ead3}
+ul{margin-top:0}
+.note{background:#fff3cd;border:1px solid #f0c36d;padding:10px}
+</style>
+</head>
+<body>
+<h2>Subject: MFdsBreaks Reports – Validation Results and Investigation Summary</h2>
+
+<p>Hi Mark,</p>
+
+<p>I completed the investigation for the four departmental <b>MFdsBreaks</b> reports mentioned in the previous review comments (<b>AFOP, CA-Income, CA-Mand and TP-D&amp;R</b>).</p>
+
+<p>Using the SQL queries, I validated the data in both the <b>QC</b> and <b>Production</b> schemas and compared the record counts for each report tab.</p>
+
+<h3>Validation Summary</h3>
+
+<table>
+<tr>
+<th>Report</th>
+<th>QC Schema</th>
+<th>Production Schema</th>
+</tr>
+<tr><td>AFOP_MFdsBreaks</td><td>Breaks = 9<br>Breaks50K = 1</td><td>Breaks = 0<br>Breaks50K = 0</td></tr>
+<tr><td>CA-Income_MFdsBreaks</td><td>Breaks = 1<br>Breaks50K = 1</td><td>Breaks = 3<br>Breaks50K = 0</td></tr>
+<tr><td>CA-Mand_MFdsBreaks</td><td>Breaks = 1<br>Breaks50K = 0</td><td>Breaks = 2<br>Breaks50K = 1</td></tr>
+<tr><td>TP-D&amp;R_MFdsBreaks</td><td>Breaks = 4<br>Breaks50K = 0</td><td>Breaks = 7<br>Breaks50K = 2</td></tr>
+</table>
+
+<h3>Breaks50K Validation</h3>
+
+<p>The <b>Breaks50K</b> tab is derived from the <b>Breaks</b> tab. It uses the same base query with an additional filter where:</p>
+
+<ul>
+<li><b>Exposure &gt; 50,000</b></li>
+<li><b>Exposure = Break Quantity × Max Price</b></li>
+</ul>
+
+<p>Only records satisfying this condition appear in the <b>Breaks50K</b> tab.</p>
+
+<h3>Conclusion</h3>
+
+<ul>
+<li>CA-Income, CA-Mand and TP-D&amp;R are returning data in Production according to the available Production data and the 50K filtering logic.</li>
+<li>AFOP currently returns no data in Production, while QC contains data.</li>
+<li>From the technical validation, the report logic appears to be working correctly based on the data available in each environment.</li>
+</ul>
+
+<div class="note">
+<b>Attachments:</b>
+<ul>
+<li>QC vs Production record count comparison</li>
+<li>Supporting screenshots</li>
+<li>Validation results</li>
+</ul>
+</div>
+
+<p>Could you please review the attached results and let me know if any further investigation is required? If there are additional business rules or expected results that should be verified, please let me know and I will continue the investigation accordingly.</p>
+
+<p>Thanks &amp; Regards,<br><b>Sivakumar</b></p>
+
+</body>
+</html>
+
+
+=============================================================================================
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AFOP MFdsBreaks Investigation Email</title>
+<style>
+body{font-family:Calibri,Arial,sans-serif;margin:40px;line-height:1.6;color:#222}
+h2{color:#1F4E79;border-bottom:2px solid #1F4E79;padding-bottom:6px}
+h3{color:#2F75B5}
+ul{margin-left:24px}
+strong{color:#000}
+.code{font-family:Consolas,monospace;background:#f4f4f4;padding:2px 4px}
+.box{background:#f8f9fa;border-left:4px solid #2F75B5;padding:12px;margin:15px 0}
+</style>
+</head>
+<body>
+<h2>AFOP_MFdsBreaks Investigation Summary</h2>
+
+<p>Hi Mark,</p>
+
+<p>I have completed my investigation on the <strong>AFOP_MFdsBreaks</strong> report and would like to share my findings for your review.</p>
+
+<p>From my analysis, it appears that the original AFOP report developed by Lokesh was the first implementation of this report. While reviewing the original query, I noticed that it contains conditions such as <span class="code">sd.item_id IS NULL</span>, which seems to differ from the implementation used for the other departmental breaks reports. Based on the previous discussions and your earlier comments, this original query does not appear to align with the standard implementation used by the remaining department reports.</p>
+
+<p>I then reviewed all of the existing departmental break reports (<strong>CA-Income, CA-Mand, CSG TP-D&amp;R, CSG TP-Sett, MFAO, MFS, SMF, TP-D&amp;R, TP-Sett and R&amp;A</strong>). All of these reports use the same query structure, with only the department name changing in the WHERE clause. Their report layouts, output columns, and report designs are also consistent.</p>
+
+<p>I also verified the <strong>TLM_REF_REASON_CATEGORY</strong> table, where AFOP is listed along with the other department names. Based on this, my assumption is that <strong>AFOP should also be treated as another departmental breaks report</strong>, following the same implementation pattern as the other departments.</p>
+
+<p>Based on this approach, I created a new Oracle query and a new BIRT report design for <strong>AFOP_MFdsBreaks</strong> by reusing the common departmental breaks query and changing only the department filter to <strong>AFOP</strong>.</p>
+
+<div class="box">
+<strong>The implementation has been completed and tested.</strong>
+</div>
+
+<h3>Test Results</h3>
+
+<ul>
+<li><strong>QC Database</strong>
+<ul>
+<li>AFOP_Breaks: <strong>9 records</strong></li>
+<li>AFOP_Breaks50K: <strong>1 record</strong></li>
+</ul>
+</li>
+
+<li><strong>Production Database</strong>
+<ul>
+<li>AFOP_Breaks: <strong>0 records</strong></li>
+<li>AFOP_Breaks50K: <strong>0 records</strong></li>
+</ul>
+</li>
+</ul>
+
+<p>The report executes successfully in both environments. The only difference is that Production currently does not contain matching data for the AFOP department.</p>
+
+<h3>Attachments</h3>
+<ul>
+<li>The new AFOP report design (.rptdesign)</li>
+<li>Investigation screenshots</li>
+<li>Sample output</li>
+<li>Supporting screenshots used during the investigation</li>
+</ul>
+
+<p>Could you please review this approach and confirm whether we can proceed with this implementation?</p>
+
+<p>If AFOP is intended to behave like the other departmental breaks reports, then I believe we can continue with this common implementation.</p>
+
+<p>However, if there is a separate original MS SQL query or any special business logic specific to AFOP that is different from the other department reports, could you please share it? I can then update the Oracle conversion accordingly.</p>
+
+<p>Once I receive your confirmation, I will proceed with the final implementation.</p>
+
+<p>Thanks &amp; Regards,<br><strong>Sivakumar</strong></p>
+
+</body>
+</html>
