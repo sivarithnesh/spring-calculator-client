@@ -1,0 +1,170 @@
+WITH tbl_BreakDetails_MonthlyAndHedge AS
+(
+    --------------------------------------------------------------------
+    -- Your existing CTE (already available)
+    --------------------------------------------------------------------
+    SELECT
+           I.ITEM_ID,
+           B.LOCAL_ACC_NO,
+           NVL(ST.STOCK_CODE,'N/A') AS ISIN,
+           I.STRING_14,
+           I.STMT_DATE,
+           I.AMOUNT_6,
+           I.SYS_ENTRY_DATE AS BreakOpened,
+           I.ITEM_DESC AS BreakDesc,
+           BD.DEPT,
+           BD.REASONTYPE,
+           BD.SOURCEDB
+    FROM TLMADM_BANK B
+         INNER JOIN TLMADM_ITEM I
+             ON B.CORR_ACC_NO = I.CORR_ACC_NO
+         LEFT JOIN TLMADM_STCK ST
+             ON I.STOCK_ID = ST.STOCK_ID
+         /* your remaining joins */
+),
+
+qry_Escal_Aging_NonHedgeData AS
+(
+    SELECT
+           SourceDB,
+           Dept,
+           ReasonType,
+           ISIN,
+           BreakOpened
+    FROM tbl_BreakDetails_MonthlyAndHedge
+    WHERE SourceDB <> 'Hedge'
+      AND ReasonType <> 'Resolved'
+      AND (TRUNC(SYSDATE) - TRUNC(BreakOpened)) >= 30
+)
+
+SELECT
+       Dept,
+       ReasonType,
+
+       SUM(CASE
+               WHEN (TRUNC(SYSDATE)-TRUNC(BreakOpened))
+                    BETWEEN 30 AND 59
+               THEN 1
+               ELSE 0
+           END) AS DAYS_30_59,
+
+       SUM(CASE
+               WHEN (TRUNC(SYSDATE)-TRUNC(BreakOpened))
+                    BETWEEN 60 AND 89
+               THEN 1
+               ELSE 0
+           END) AS DAYS_60_89,
+
+       SUM(CASE
+               WHEN (TRUNC(SYSDATE)-TRUNC(BreakOpened))
+                    BETWEEN 90 AND 119
+               THEN 1
+               ELSE 0
+           END) AS DAYS_90_119,
+
+       SUM(CASE
+               WHEN (TRUNC(SYSDATE)-TRUNC(BreakOpened))
+                    BETWEEN 120 AND 149
+               THEN 1
+               ELSE 0
+           END) AS DAYS_120_149,
+
+       SUM(CASE
+               WHEN (TRUNC(SYSDATE)-TRUNC(BreakOpened))
+                    BETWEEN 150 AND 179
+               THEN 1
+               ELSE 0
+           END) AS DAYS_150_179,
+
+       SUM(CASE
+               WHEN (TRUNC(SYSDATE)-TRUNC(BreakOpened))
+                    >=180
+               THEN 1
+               ELSE 0
+           END) AS DAYS_180_PLUS
+
+FROM qry_Escal_Aging_NonHedgeData
+GROUP BY
+       Dept,
+       ReasonType
+
+====================================================================================
+WITH tbl_BreakDetails_MonthlyAndHedge AS
+(
+    SELECT
+        I.ITEM_ID,
+        B.LOCAL_ACC_NO,
+        NVL(ST.STOCK_CODE,'N/A') AS ISIN,
+        I.STRING_14,
+        I.STMT_DATE,
+        I.AMOUNT_6,
+        I.SYS_ENTRY_DATE AS BreakOpened,
+        I.ITEM_DESC AS BreakDesc,
+        I.STRING_15 AS Dept,
+        I.STRING_16 AS BreakType,
+        'Hedge' AS SourceDB
+    FROM TLMADM_BANK B
+         INNER JOIN TLMADM_ITEM I
+             ON B.CORR_ACC_NO = I.CORR_ACC_NO
+         LEFT JOIN TLMADM_STCK ST
+             ON I.STOCK_ID = ST.STOCK_ID
+    WHERE B.AGENT_CODE = 'MUTUAL FUNDS - HEDGE TRANS POS'
+      AND I.LS_TYPE NOT IN (9030,9099)
+      AND I.FLAG_2 = 0
+),
+
+tbl_BreakDetails_MonthlyAndHedge_Resolved AS
+(
+    SELECT
+        MH.*,
+        RI.LAST_ACTION_DATE AS Resolved
+    FROM tbl_BreakDetails_MonthlyAndHedge MH
+         LEFT JOIN TLMADM_ITEM RI
+            ON MH.ITEM_ID = RI.ITEM_ID
+           AND RI.REASON_TYPE_ID = 100000057
+           AND RI.FLAG_2 = 0
+)
+
+SELECT
+    Dept,
+    BreakType,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE) - TRUNC(BreakOpened) BETWEEN 30 AND 59
+            THEN 1 ELSE 0
+        END) AS DAYS_30_59,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE) - TRUNC(BreakOpened) BETWEEN 60 AND 89
+            THEN 1 ELSE 0
+        END) AS DAYS_60_89,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE) - TRUNC(BreakOpened) BETWEEN 90 AND 119
+            THEN 1 ELSE 0
+        END) AS DAYS_90_119,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE) - TRUNC(BreakOpened) BETWEEN 120 AND 149
+            THEN 1 ELSE 0
+        END) AS DAYS_120_149,
+
+    SUM(CASE
+            WHEN TRUNC(SYSDATE) - TRUNC(BreakOpened) >= 150
+            THEN 1 ELSE 0
+        END) AS DAYS_150_PLUS
+
+FROM tbl_BreakDetails_MonthlyAndHedge_Resolved
+WHERE TRUNC(SYSDATE) - TRUNC(BreakOpened) >= 30
+  AND SourceDB = 'Hedge'
+  AND Resolved IS NULL
+GROUP BY
+    Dept,
+    BreakType
+ORDER BY
+    Dept,
+    BreakType;
+
+ORDER BY
+       Dept,
+       ReasonType;
